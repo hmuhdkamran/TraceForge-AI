@@ -8,7 +8,6 @@ use crate::config::Config;
 use crate::errors::{AppError, ApiResult};
 use crate::models::investigation::Investigation;
 use crate::repositories::{TestExecutionRepo, AuditRepo};
-use crate::security::path_guard::PathGuard;
 
 /// Allowed test command definitions. Never accept command IDs from clients.
 pub const CMD_RUST_BACKEND_TESTS: &str = "rust_backend_tests";
@@ -130,7 +129,7 @@ impl VerificationService {
 
                 // Save stdout/stderr to workspace files
                 let stdout_rel = format!("logs/{}_stdout.txt", execution.id);
-                let stderr_rel = format!("logs/{}_stderr.txt", execution.id);
+                let _stderr_rel = format!("logs/{}_stderr.txt", execution.id);
 
                 // Best-effort log write
                 if let Ok(ws_id) = crate::services::workspace::WorkspaceService::validate_path(

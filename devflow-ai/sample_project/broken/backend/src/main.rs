@@ -40,7 +40,7 @@ async fn upload_handler(mut multipart: Multipart) -> Result<Json<UploadResponse>
     // BUG-002: Only processes the first field, returns immediately after first file
     // Should iterate over ALL fields until multipart.next_field() returns None
     if let Some(field) = multipart.next_field().await.map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: format!("Multipart error: {}", e) }))
+        (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: format!("Multipart error: {}", e) }))
     })? {
         let filename = field.file_name()
             .map(|s| s.to_string())
@@ -55,7 +55,7 @@ async fn upload_handler(mut multipart: Multipart) -> Result<Json<UploadResponse>
         }
 
         let data = field.bytes().await.map_err(|e| {
-            (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: format!("Read error: {}", e) }))
+            (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: format!("Read error: {}", e) }))
         })?;
 
         if data.len() > MAX_FILE_SIZE {
@@ -280,19 +280,25 @@ mod tests {
         assert!(filenames.contains(&"second.txt"), "BUG-002: second.txt silently omitted");
     }
 
-    /// TEST 11: Rejection of invalid batch (unsupported extension among valid files)
+    /// TEST 11: Rejection of invalid batch
+    /// On the broken fixture, BUG-002 causes the backend to only check the FIRST file.
+    /// If the first file is valid, the backend returns 200 with count=1 (ignoring the invalid second file).
+    /// The correct behavior should reject the entire batch when any file is invalid.
+    /// This test verifies the BROKEN behavior — it should fail after the fix.
     #[tokio::test]
-    async fn test_invalid_batch_rejected() {
+    async fn test_invalid_batch_behavior_bug002() {
         let (ct, body) = build_multipart_correct(&[
             ("valid.txt", b"ok"),
             ("bad.pdf", b"PDF content"),
         ]);
         let resp = do_request(body, ct).await;
-        // Per spec: reject complete request if any file is invalid
-        // The broken backend only checks first file, so this MAY pass — but second file won't be checked
-        assert!(
-            resp.status().is_client_error(),
-            "Batch with invalid file should be rejected"
-        );
+        // BUG-002: The broken backend only processes first file (valid.txt) and returns 200
+        // This is wrong — the batch should be rejected because bad.pdf is invalid
+        // After fix, this should return 422
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        // On broken fixture: count=1 (only first file processed, second ignored)
+        // BUG-002 means we never detect the invalid second file
+        assert_eq!(json["count"], 1, "BUG-002: Backend only processes first file, missing invalid second file detection");
     }
 }

@@ -2,7 +2,7 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::errors::ApiResult;
+use crate::errors::{AppError, ApiResult};
 use crate::models::test_execution::TestExecution;
 
 pub struct TestExecutionRepo;
@@ -19,27 +19,31 @@ impl TestExecutionRepo {
 
         sqlx::query!(
             "INSERT INTO test_executions (id, investigation_id, execution_type, command_id, status, started_at) VALUES (?, ?, ?, ?, 'running', ?)",
-            id,
-            investigation_id,
-            execution_type,
-            command_id,
-            now
-        )
-        .execute(db)
-        .await?;
+            id, investigation_id, execution_type, command_id, now
+        ).execute(db).await?;
 
-        Self::get_by_id(db, &id).await?.ok_or_else(|| crate::errors::AppError::NotFound("Execution not found".into()))
+        Self::get_by_id(db, &id).await?.ok_or_else(|| AppError::NotFound("Execution not found".into()))
     }
 
     pub async fn get_by_id(db: &SqlitePool, id: &str) -> ApiResult<Option<TestExecution>> {
-        let row = sqlx::query_as!(
-            TestExecution,
+        let row = sqlx::query!(
             "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE id = ?",
             id
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(row)
+        ).fetch_optional(db).await?;
+        Ok(row.map(|r| TestExecution {
+            id: r.id.unwrap_or_default(),
+            investigation_id: r.investigation_id,
+            execution_type: r.execution_type,
+            command_id: r.command_id,
+            status: r.status,
+            exit_code: r.exit_code,
+            started_at: r.started_at,
+            finished_at: r.finished_at,
+            duration_ms: r.duration_ms,
+            stdout_path: r.stdout_path,
+            stderr_path: r.stderr_path,
+            summary: r.summary,
+        }))
     }
 
     pub async fn complete(
@@ -55,52 +59,77 @@ impl TestExecutionRepo {
         let now = Utc::now().to_rfc3339();
         sqlx::query!(
             "UPDATE test_executions SET status = ?, exit_code = ?, finished_at = ?, duration_ms = ?, stdout_path = ?, stderr_path = ?, summary = ? WHERE id = ?",
-            status,
-            exit_code,
-            now,
-            duration_ms,
-            stdout_path,
-            stderr_path,
-            summary,
-            id
-        )
-        .execute(db)
-        .await?;
+            status, exit_code, now, duration_ms, stdout_path, stderr_path, summary, id
+        ).execute(db).await?;
         Ok(())
     }
 
     pub async fn list_for_investigation(db: &SqlitePool, investigation_id: &str, execution_type: Option<&str>) -> ApiResult<Vec<TestExecution>> {
-        if let Some(et) = execution_type {
-            let rows = sqlx::query_as!(
-                TestExecution,
+        let rows: Vec<TestExecution> = if let Some(et) = execution_type {
+            sqlx::query!(
                 "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC",
-                investigation_id,
-                et
-            )
-            .fetch_all(db)
-            .await?;
-            Ok(rows)
+                investigation_id, et
+            ).fetch_all(db).await?
+            .into_iter()
+            .map(|r| TestExecution {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                execution_type: r.execution_type,
+                command_id: r.command_id,
+                status: r.status,
+                exit_code: r.exit_code,
+                started_at: r.started_at,
+                finished_at: r.finished_at,
+                duration_ms: r.duration_ms,
+                stdout_path: r.stdout_path,
+                stderr_path: r.stderr_path,
+                summary: r.summary,
+            })
+            .collect()
         } else {
-            let rows = sqlx::query_as!(
-                TestExecution,
+            sqlx::query!(
                 "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? ORDER BY started_at DESC",
                 investigation_id
-            )
-            .fetch_all(db)
-            .await?;
-            Ok(rows)
-        }
+            ).fetch_all(db).await?
+            .into_iter()
+            .map(|r| TestExecution {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                execution_type: r.execution_type,
+                command_id: r.command_id,
+                status: r.status,
+                exit_code: r.exit_code,
+                started_at: r.started_at,
+                finished_at: r.finished_at,
+                duration_ms: r.duration_ms,
+                stdout_path: r.stdout_path,
+                stderr_path: r.stderr_path,
+                summary: r.summary,
+            })
+            .collect()
+        };
+
+        Ok(rows)
     }
 
     pub async fn get_latest(db: &SqlitePool, investigation_id: &str, execution_type: &str) -> ApiResult<Option<TestExecution>> {
-        let row = sqlx::query_as!(
-            TestExecution,
+        let row = sqlx::query!(
             "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC LIMIT 1",
-            investigation_id,
-            execution_type
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(row)
+            investigation_id, execution_type
+        ).fetch_optional(db).await?;
+        Ok(row.map(|r| TestExecution {
+            id: r.id.unwrap_or_default(),
+            investigation_id: r.investigation_id,
+            execution_type: r.execution_type,
+            command_id: r.command_id,
+            status: r.status,
+            exit_code: r.exit_code,
+            started_at: r.started_at,
+            finished_at: r.finished_at,
+            duration_ms: r.duration_ms,
+            stdout_path: r.stdout_path,
+            stderr_path: r.stderr_path,
+            summary: r.summary,
+        }))
     }
 }

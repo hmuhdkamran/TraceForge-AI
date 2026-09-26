@@ -1,11 +1,9 @@
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
-use serde_json::Value;
 use serde::{Deserialize, Serialize};
 
 use crate::config::Config;
 use crate::errors::{AppError, ApiResult};
-use crate::models::investigation::InvestigationArtifact;
 use crate::repositories::{InvestigationRepo, FindingRepo, EvidenceRepo, AuditRepo};
 use crate::services::workspace::WorkspaceService;
 

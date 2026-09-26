@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::errors::ApiResult;
 use crate::models::investigation::Investigation;
-use crate::repositories::{InvestigationRepo, FindingRepo, EvidenceRepo, TestExecutionRepo};
+use crate::repositories::{FindingRepo, TestExecutionRepo};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InvestigationMetrics {

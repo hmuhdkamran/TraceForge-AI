@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO investigation_artifacts (id, investigation_id, artifact_type, schema_version, relative_path, content_sha256, created_at, imported_at, validation_status) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "1ef7a7139b1558dbc3d296e96d2fd8acd3bc3db22510fb458d34906efc1b35c1"
+}

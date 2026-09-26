@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO findings (id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unverified', ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "7064c1cbd99470b293ed62c41e100db981014a675bdae85b9182dc00ccc27bc9"
+}

@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "investigation_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "finding_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "expected_behavior",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "observed_behavior",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "confidence",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "verification_status",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "08501b9caafa0dd1d359a4e06893dd09159465b5db204a8404141c02a86f91ef"
+}

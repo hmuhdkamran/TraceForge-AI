@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, investigation_id, plan_hash, decision, approved_at, approver_id, comment FROM approvals WHERE investigation_id = ? ORDER BY approved_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "investigation_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "plan_hash",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "decision",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "approved_at",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "approver_id",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "comment",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "6b2f81ebfbc0966430687f1de54323da1aa73446038709d96d7428bc8554ee50"
+}

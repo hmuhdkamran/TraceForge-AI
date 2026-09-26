@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO manual_baselines (id, investigation_id, scenario_id, start_time, finish_time, active_minutes, completed_steps, final_test_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "4d382ade8bd8053c634f6d6173af7348826f9a92e702c794818d2dbbaad2bde9"
+}

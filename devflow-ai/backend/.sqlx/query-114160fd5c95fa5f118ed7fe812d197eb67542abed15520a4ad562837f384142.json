@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO investigations\n                (id, title, description, project_id, scenario_id, status, workspace_id, created_at, updated_at)\n               VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "114160fd5c95fa5f118ed7fe812d197eb67542abed15520a4ad562837f384142"
+}

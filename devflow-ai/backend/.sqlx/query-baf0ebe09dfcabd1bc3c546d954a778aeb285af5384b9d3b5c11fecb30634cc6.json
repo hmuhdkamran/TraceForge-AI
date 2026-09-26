@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO test_executions (id, investigation_id, execution_type, command_id, status, started_at) VALUES (?, ?, ?, ?, 'running', ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "baf0ebe09dfcabd1bc3c546d954a778aeb285af5384b9d3b5c11fecb30634cc6"
+}

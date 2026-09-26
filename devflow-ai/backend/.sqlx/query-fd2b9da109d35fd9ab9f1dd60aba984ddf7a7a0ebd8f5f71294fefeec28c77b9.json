@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, investigation_id, event_type, actor_type, actor_id, details_json, created_at FROM audit_events WHERE investigation_id = ? ORDER BY created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "investigation_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "actor_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "actor_id",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "details_json",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fd2b9da109d35fd9ab9f1dd60aba984ddf7a7a0ebd8f5f71294fefeec28c77b9"
+}

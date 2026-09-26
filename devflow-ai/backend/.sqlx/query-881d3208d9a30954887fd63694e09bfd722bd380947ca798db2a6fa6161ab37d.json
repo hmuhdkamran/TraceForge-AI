@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE test_executions SET status = ?, exit_code = ?, finished_at = ?, duration_ms = ?, stdout_path = ?, stderr_path = ?, summary = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "881d3208d9a30954887fd63694e09bfd722bd380947ca798db2a6fa6161ab37d"
+}

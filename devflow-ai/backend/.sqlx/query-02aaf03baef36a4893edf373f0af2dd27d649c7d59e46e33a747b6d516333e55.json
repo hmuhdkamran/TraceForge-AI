@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, investigation_id, finding_id, evidence_type, source_file, start_line, end_line, content_excerpt, test_id, description FROM evidence WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "investigation_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "finding_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "evidence_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_file",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "start_line",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "end_line",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "content_excerpt",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "test_id",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "02aaf03baef36a4893edf373f0af2dd27d649c7d59e46e33a747b6d516333e55"
+}

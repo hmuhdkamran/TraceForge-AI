@@ -1,0 +1,25 @@
+# Environment
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Rust
+target/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Workspaces (generated investigation runs)
+runs/*/
+!runs/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

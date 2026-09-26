@@ -1,0 +1,28 @@
+services:
+  contractguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: sqlite:///app/data/contractguard.db
+      BIND_ADDR: "0.0.0.0:8080"
+      WORKSPACE_ROOT: /app/runs
+      SAMPLE_PROJECT_ROOT: /app/sample_project
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:4173"
+      DEMO_MODE: "false"
+    volumes:
+      - contractguard_data:/app/data
+      - contractguard_runs:/app/runs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  contractguard_data:
+  contractguard_runs:

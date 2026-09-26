@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContractGuard Diagnosis Artifact",
+  "type": "object",
+  "required": ["schema_version", "investigation_id", "project_id", "summary", "findings"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "investigation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Finding"
+      }
+    },
+    "root_causes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/RootCause" }
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Evidence" }
+    },
+    "affected_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "test_references": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "Finding": {
+      "type": "object",
+      "required": ["id", "finding_type", "title", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "finding_type": {
+          "type": "string",
+          "enum": ["contract_mismatch", "frontend_defect", "backend_defect", "root_cause", "documentation", "test_gap"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "expected_behavior": { "type": "string" },
+        "observed_behavior": { "type": "string" },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "source_references": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SourceReference" }
+        }
+      }
+    },
+    "RootCause": {
+      "type": "object",
+      "required": ["id", "title", "description", "finding_ids"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "finding_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "required": ["finding_id", "evidence_type", "description"],
+      "properties": {
+        "finding_id": { "type": "string" },
+        "evidence_type": { "type": "string" },
+        "source_file": { "type": "string" },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "content_excerpt": { "type": "string" },
+        "test_id": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "SourceReference": {
+      "type": "object",
+      "required": ["relative_path"],
+      "properties": {
+        "relative_path": { "type": "string", "minLength": 1 },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

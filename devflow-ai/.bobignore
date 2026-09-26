@@ -1,0 +1,8 @@
+.env
+*.key
+*.pem
+target/
+node_modules/
+dist/
+runs/*/
+*.db

@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContractGuard Changed Files Artifact",
+  "type": "object",
+  "required": ["schema_version", "investigation_id", "plan_hash", "files"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "investigation_id": { "type": "string", "minLength": 1 },
+    "plan_hash": { "type": "string", "minLength": 1 },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path", "change_type"],
+        "properties": {
+          "relative_path": { "type": "string", "minLength": 1 },
+          "change_type": {
+            "type": "string",
+            "enum": ["modified", "added", "deleted"]
+          },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

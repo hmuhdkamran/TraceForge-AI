@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE investigations SET completed_at = ?, updated_at = ?, status = 'COMPLETED' WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "f298396eae5b2656b4e04d0ec5d14f0377e057c799afb57573e64cc322ef7424"
+}

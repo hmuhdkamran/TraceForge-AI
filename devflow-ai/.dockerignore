@@ -1,0 +1,16 @@
+target/
+backend/target/
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+runs/
+*.db
+*.db-shm
+*.db-wal
+.env
+.git/
+.github/
+.vscode/
+*.log
+logs/

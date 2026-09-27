@@ -4,8 +4,8 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
-use crate::repositories::InvestigationRepo;
+use crate::errors::{ApiResult, AppError};
+use crate::repositories::{AuditRepo, InvestigationRepo};
 use crate::services::artifacts::ArtifactService;
 use crate::state::SharedState;
 
@@ -21,22 +21,99 @@ pub async fn sync_artifacts(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let result = ArtifactService::sync_artifacts(
-        &state.db,
-        &state.config,
-        &id,
-        &investigation.workspace_id,
-    ).await?;
+    let result =
+        ArtifactService::sync_artifacts(&state.db, &state.config, &id, &investigation.workspace_id)
+            .await?;
 
-    // If findings were imported, advance state if needed
-    if result.findings_created > 0 && matches!(
-        investigation.status.as_str(),
-        "AWAITING_BOB_INVESTIGATION" | "INVESTIGATION_IMPORTED"
-    ) {
-        let _ = InvestigationRepo::update_status(&state.db, &id, "INVESTIGATION_IMPORTED").await;
-        let _ = InvestigationRepo::update_status(&state.db, &id, "AWAITING_APPROVAL").await;
-    } else if result.artifacts_imported > 0 && investigation.status == "AWAITING_BOB_INVESTIGATION" {
-        let _ = InvestigationRepo::update_status(&state.db, &id, "INVESTIGATION_IMPORTED").await;
+    // If no errors and findings were imported, advance state cleanly
+    if result.errors.is_empty() {
+        let current_status = investigation.status.as_str();
+        if result.findings_created > 0 {
+            if matches!(current_status, "WORKSPACE_READY" | "BASELINE_CAPTURED") {
+                let _ =
+                    InvestigationRepo::update_status(&state.db, &id, "AWAITING_BOB_INVESTIGATION")
+                        .await;
+                let _ = AuditRepo::record(
+                    &state.db,
+                    Some(&id),
+                    "status.awaiting_bob_investigation",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await;
+            }
+            if matches!(
+                current_status,
+                "WORKSPACE_READY" | "BASELINE_CAPTURED" | "AWAITING_BOB_INVESTIGATION"
+            ) {
+                let _ = InvestigationRepo::update_status(&state.db, &id, "INVESTIGATION_IMPORTED")
+                    .await;
+                let _ = AuditRepo::record(
+                    &state.db,
+                    Some(&id),
+                    "status.investigation_imported",
+                    "system",
+                    None,
+                    json!({
+                        "artifacts_imported": result.artifacts_imported,
+                        "findings_created": result.findings_created,
+                    }),
+                )
+                .await;
+            }
+            if matches!(
+                current_status,
+                "WORKSPACE_READY"
+                    | "BASELINE_CAPTURED"
+                    | "AWAITING_BOB_INVESTIGATION"
+                    | "INVESTIGATION_IMPORTED"
+            ) {
+                let _ = InvestigationRepo::update_status(&state.db, &id, "AWAITING_APPROVAL").await;
+                let _ = AuditRepo::record(
+                    &state.db,
+                    Some(&id),
+                    "status.awaiting_approval",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await;
+            }
+        } else if result.artifacts_imported > 0 {
+            if matches!(current_status, "WORKSPACE_READY" | "BASELINE_CAPTURED") {
+                let _ =
+                    InvestigationRepo::update_status(&state.db, &id, "AWAITING_BOB_INVESTIGATION")
+                        .await;
+                let _ = AuditRepo::record(
+                    &state.db,
+                    Some(&id),
+                    "status.awaiting_bob_investigation",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await;
+            }
+            if matches!(
+                current_status,
+                "WORKSPACE_READY" | "BASELINE_CAPTURED" | "AWAITING_BOB_INVESTIGATION"
+            ) {
+                let _ = InvestigationRepo::update_status(&state.db, &id, "INVESTIGATION_IMPORTED")
+                    .await;
+                let _ = AuditRepo::record(
+                    &state.db,
+                    Some(&id),
+                    "status.investigation_imported",
+                    "system",
+                    None,
+                    json!({
+                        "artifacts_imported": result.artifacts_imported,
+                    }),
+                )
+                .await;
+            }
+        }
     }
 
     Ok(Json(json!({
@@ -68,7 +145,8 @@ pub async fn list_findings(
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
     let findings = crate::repositories::FindingRepo::list(&state.db, &id).await?;
-    let evidence = crate::repositories::EvidenceRepo::list_for_investigation(&state.db, &id).await?;
+    let evidence =
+        crate::repositories::EvidenceRepo::list_for_investigation(&state.db, &id).await?;
 
     Ok(Json(json!({
         "findings": findings,

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM evidence WHERE investigation_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d339b5933eb0fd10c77350e790761dc2ad18fd3e74880df9f73b7ffb6a2fee7d"
+}

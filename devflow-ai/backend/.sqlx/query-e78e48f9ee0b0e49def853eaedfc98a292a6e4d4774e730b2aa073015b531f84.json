@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE investigation_artifacts SET content_sha256 = ?, imported_at = ?, validation_status = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "e78e48f9ee0b0e49def853eaedfc98a292a6e4d4774e730b2aa073015b531f84"
+}

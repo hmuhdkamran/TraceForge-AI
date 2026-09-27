@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO evidence (id, investigation_id, finding_id, evidence_type, source_file, start_line, end_line, content_excerpt, test_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "9459e8911f809cc69670909dfe0147e220b4dd9016bdbc091180aa21435b46ae"
+}

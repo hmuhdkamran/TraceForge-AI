@@ -4,7 +4,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::models::investigation::ApprovalRequest;
 use crate::repositories::InvestigationRepo;
 use crate::services::artifacts::ArtifactService;
@@ -22,7 +22,9 @@ pub async fn get_plan(
         &state.config,
         &investigation.workspace_id,
         "bob_artifacts/fix_plan.md",
-    ).await.unwrap_or_default();
+    )
+    .await
+    .unwrap_or_default();
 
     let plan_hash = ArtifactService::sha256(&fix_plan);
     let approval = InvestigationRepo::get_approval(&state.db, &id).await?;
@@ -48,9 +50,13 @@ pub async fn create_approval(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    if !matches!(investigation.status.as_str(), "AWAITING_APPROVAL" | "INVESTIGATION_IMPORTED") {
+    if !matches!(
+        investigation.status.as_str(),
+        "AWAITING_APPROVAL" | "INVESTIGATION_IMPORTED"
+    ) {
         return Err(AppError::InvalidTransition(format!(
-            "Cannot approve in status: {}", investigation.status
+            "Cannot approve in status: {}",
+            investigation.status
         )));
     }
 
@@ -59,17 +65,23 @@ pub async fn create_approval(
         &state.config,
         &investigation.workspace_id,
         "bob_artifacts/fix_plan.md",
-    ).await.unwrap_or_default();
+    )
+    .await
+    .unwrap_or_default();
 
     if fix_plan.is_empty() {
-        return Err(AppError::BadRequest("fix_plan.md is empty or missing — cannot approve without a plan".into()));
+        return Err(AppError::BadRequest(
+            "fix_plan.md is empty or missing — cannot approve without a plan".into(),
+        ));
     }
 
     let plan_hash = ArtifactService::sha256(&fix_plan);
 
     let decision = req.decision.to_lowercase();
     if !matches!(decision.as_str(), "approved" | "rejected") {
-        return Err(AppError::BadRequest("Decision must be 'approved' or 'rejected'".into()));
+        return Err(AppError::BadRequest(
+            "Decision must be 'approved' or 'rejected'".into(),
+        ));
     }
 
     let approval = InvestigationRepo::create_approval(
@@ -79,10 +91,20 @@ pub async fn create_approval(
         &decision,
         req.approver_id.as_deref(),
         req.comment.as_deref(),
-    ).await?;
+    )
+    .await?;
 
     if decision == "approved" {
         InvestigationRepo::set_approved_at(&state.db, &id).await?;
+        let _ = crate::repositories::AuditRepo::record(
+            &state.db,
+            Some(&id),
+            "status.approved",
+            "developer",
+            req.approver_id.as_deref(),
+            json!({ "plan_hash": plan_hash }),
+        )
+        .await;
     }
 
     crate::repositories::AuditRepo::record(
@@ -91,8 +113,9 @@ pub async fn create_approval(
         &format!("approval.{}", decision),
         "developer",
         req.approver_id.as_deref(),
-        json!({ "plan_hash": plan_hash }),
-    ).await?;
+        json!({ "plan_hash": plan_hash, "comment": req.comment }),
+    )
+    .await?;
 
     Ok(Json(json!({ "approval": approval })))
 }

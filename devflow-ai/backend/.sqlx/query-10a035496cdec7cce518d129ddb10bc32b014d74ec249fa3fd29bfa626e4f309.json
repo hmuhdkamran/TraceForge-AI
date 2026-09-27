@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM findings WHERE investigation_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "10a035496cdec7cce518d129ddb10bc32b014d74ec249fa3fd29bfa626e4f309"
+}

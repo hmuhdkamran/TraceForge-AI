@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE investigations SET status = 'FAILED', failure_reason = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "d772d010eea8d1d9ab2897258240a0fb9f45e6d579b88db893ec85321e2e5311"
+}

@@ -11,6 +11,7 @@ import type {
   Project,
   Scenario,
   InvestigationMetrics,
+  DiffResponse,
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -122,7 +123,7 @@ export async function getVerification(id: string): Promise<{ baseline: TestExecu
   return res.data;
 }
 
-export async function getDiff(id: string): Promise<{ implementation_summary: string; changed_files: unknown }> {
+export async function getDiff(id: string): Promise<DiffResponse> {
   const res = await client.get(`/investigations/${id}/diff`);
   return res.data;
 }

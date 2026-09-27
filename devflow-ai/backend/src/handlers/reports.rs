@@ -5,7 +5,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::repositories::InvestigationRepo;
 use crate::services::reporting::ReportingService;
 use crate::state::SharedState;
@@ -18,7 +18,7 @@ pub async fn get_report(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let report = ReportingService::generate(&state.db, &investigation).await?;
+    let report = ReportingService::generate(&state.db, &state.config, &investigation).await?;
     Ok(Json(json!({ "report": report })))
 }
 
@@ -30,7 +30,7 @@ pub async fn get_report_html(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let report = ReportingService::generate(&state.db, &investigation).await?;
+    let report = ReportingService::generate(&state.db, &state.config, &investigation).await?;
     let html = ReportingService::render_html(&report);
 
     // Mark as completed if verified
@@ -49,6 +49,6 @@ pub async fn get_report_json(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let report = ReportingService::generate(&state.db, &investigation).await?;
+    let report = ReportingService::generate(&state.db, &state.config, &investigation).await?;
     Ok(Json(serde_json::to_value(&report)?))
 }

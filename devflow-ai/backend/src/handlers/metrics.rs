@@ -1,7 +1,10 @@
-use axum::{extract::{Path, State}, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::repositories::InvestigationRepo;
 use crate::services::metrics::MetricsService;
 use crate::state::SharedState;
@@ -14,7 +17,7 @@ pub async fn get_metrics(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let metrics = MetricsService::compute(&state.db, &investigation).await?;
+    let metrics = MetricsService::compute(&state.db, &state.config, &investigation).await?;
     Ok(Json(json!({ "metrics": metrics })))
 }
 

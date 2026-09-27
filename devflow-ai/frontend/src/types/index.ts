@@ -128,6 +128,16 @@ export interface CreateInvestigationRequest {
   reproduction_steps?: string;
 }
 
+export interface ManualBaselineComparison {
+  manual_active_minutes: number;
+  bob_active_minutes: number;
+  time_saved_minutes: number;
+  percentage_time_reduction: number;
+  test_failures_resolved: number;
+  verified_regression_tests: number;
+  scenario_id: string;
+}
+
 export interface InvestigationMetrics {
   investigation_id: string;
   total_duration_ms?: number;
@@ -139,13 +149,27 @@ export interface InvestigationMetrics {
   modified_files: number;
   regression_tests_added: number;
   status: string;
+  manual_comparison?: ManualBaselineComparison;
+}
+
+export interface FileDiff {
+  path: string;
+  diff: string;
+}
+
+export interface DiffResponse {
+  implementation_summary: string;
+  changed_files: unknown;
+  diff: string;
+  file_diffs?: FileDiff[];
 }
 
 export interface EvidenceGraphNode {
   id: string;
   type: 'requirement' | 'frontend' | 'backend' | 'failing_test' | 'root_cause' | 'fix' | 'passing_test';
   label: string;
-  data?: Finding | Evidence;
+  data?: Finding | Evidence | Record<string, unknown>;
+  description?: string;
 }
 
 export interface EvidenceGraphEdge {

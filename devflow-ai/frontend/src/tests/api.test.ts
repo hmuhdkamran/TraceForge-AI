@@ -107,4 +107,19 @@ describe('API service', () => {
       expect(steps[i].step).toBeGreaterThanOrEqual(steps[i - 1].step);
     }
   });
+
+  it('exports valid investigation API methods', async () => {
+    const api = await import('../services/api');
+    expect(typeof api.createInvestigation).toBe('function');
+    expect(typeof api.getInvestigation).toBe('function');
+    expect(typeof api.runBaseline).toBe('function');
+    expect(typeof api.getBaseline).toBe('function');
+    expect(typeof api.getBobInvestigationPrompt).toBe('function');
+    expect(typeof api.getBobImplementationPrompt).toBe('function');
+    expect(typeof api.getPlan).toBe('function');
+    expect(typeof api.createApproval).toBe('function');
+    expect(typeof api.runVerification).toBe('function');
+    expect(typeof api.getVerification).toBe('function');
+    expect(typeof api.getDiff).toBe('function');
+  });
 });

@@ -20,28 +20,32 @@ impl AuditRepo {
         let now = Utc::now().to_rfc3339();
         let details_str = details.to_string();
 
-        sqlx::query(
-            "INSERT INTO audit_events (id, investigation_id, event_type, actor_type, actor_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&id)
-        .bind(investigation_id)
-        .bind(event_type)
-        .bind(actor_type)
-        .bind(actor_id)
-        .bind(&details_str)
-        .bind(&now)
-        .execute(db)
-        .await?;
+        sqlx::query!(
+            "INSERT INTO audit_events (id, investigation_id, event_type, actor_type, actor_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            id, investigation_id, event_type, actor_type, actor_id, details_str, now
+        ).execute(db).await?;
         Ok(())
     }
 
-    pub async fn list_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<Vec<AuditEvent>> {
-        let rows = sqlx::query_as::<_, AuditEvent>(
-            "SELECT id, investigation_id, event_type, actor_type, actor_id, details_json, created_at FROM audit_events WHERE investigation_id = ? ORDER BY created_at ASC"
-        )
-        .bind(investigation_id)
-        .fetch_all(db)
-        .await?;
-        Ok(rows)
+    pub async fn list_for_investigation(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<Vec<AuditEvent>> {
+        let rows = sqlx::query!(
+            "SELECT id, investigation_id, event_type, actor_type, actor_id, details_json, created_at FROM audit_events WHERE investigation_id = ? ORDER BY created_at ASC",
+            investigation_id
+        ).fetch_all(db).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| AuditEvent {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                event_type: r.event_type,
+                actor_type: r.actor_type,
+                actor_id: r.actor_id,
+                details_json: r.details_json,
+                created_at: r.created_at,
+            })
+            .collect())
     }
 }

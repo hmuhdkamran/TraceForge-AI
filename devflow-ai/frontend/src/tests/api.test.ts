@@ -115,5 +115,11 @@ describe('API service', () => {
     expect(typeof api.runBaseline).toBe('function');
     expect(typeof api.getBaseline).toBe('function');
     expect(typeof api.getBobInvestigationPrompt).toBe('function');
+    expect(typeof api.getBobImplementationPrompt).toBe('function');
+    expect(typeof api.getPlan).toBe('function');
+    expect(typeof api.createApproval).toBe('function');
+    expect(typeof api.runVerification).toBe('function');
+    expect(typeof api.getVerification).toBe('function');
+    expect(typeof api.getDiff).toBe('function');
   });
 });

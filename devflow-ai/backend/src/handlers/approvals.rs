@@ -83,6 +83,14 @@ pub async fn create_approval(
 
     if decision == "approved" {
         InvestigationRepo::set_approved_at(&state.db, &id).await?;
+        let _ = crate::repositories::AuditRepo::record(
+            &state.db,
+            Some(&id),
+            "status.approved",
+            "developer",
+            req.approver_id.as_deref(),
+            json!({ "plan_hash": plan_hash }),
+        ).await;
     }
 
     crate::repositories::AuditRepo::record(
@@ -91,7 +99,7 @@ pub async fn create_approval(
         &format!("approval.{}", decision),
         "developer",
         req.approver_id.as_deref(),
-        json!({ "plan_hash": plan_hash }),
+        json!({ "plan_hash": plan_hash, "comment": req.comment }),
     ).await?;
 
     Ok(Json(json!({ "approval": approval })))

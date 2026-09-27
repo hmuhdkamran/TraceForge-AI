@@ -75,7 +75,7 @@ impl VerificationService {
             "verification",
             CMD_RUST_BACKEND_TESTS,
             "cargo",
-            &["test"],
+            &["test", "--", "--nocapture"],
             &broken_backend,
         ).await
     }
@@ -107,12 +107,18 @@ impl VerificationService {
 
         let timeout_duration = Duration::from_secs(config.test_timeout_secs);
 
+        let mut cmd = Command::new(program);
+        cmd.args(args).current_dir(working_dir);
+
+        // Share target cache if available so dependency compilation doesn't timeout
+        let shared_target = config.sample_project_root.join("broken").join("backend").join("target");
+        if shared_target.exists() {
+            cmd.env("CARGO_TARGET_DIR", &shared_target);
+        }
+
         let output_result = timeout(
             timeout_duration,
-            Command::new(program)
-                .args(args)
-                .current_dir(working_dir)
-                .output(),
+            cmd.output(),
         ).await;
 
         let duration_ms = start.elapsed().as_millis() as i64;

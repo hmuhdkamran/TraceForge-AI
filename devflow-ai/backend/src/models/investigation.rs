@@ -59,13 +59,18 @@ impl InvestigationStatus {
             (Self::AwaitingApproval, Self::Approved) => true,
             (Self::AwaitingApproval, Self::AwaitingApproval) => true, // re-import with changes
             (Self::Approved, Self::ImplementationInProgress) => true,
+            (Self::Approved, Self::ReadyForVerification) => true,
+            (Self::Approved, Self::VerificationRunning) => true,
             (Self::ImplementationInProgress, Self::ReadyForVerification) => true,
+            (Self::ImplementationInProgress, Self::VerificationRunning) => true,
             (Self::ImplementationInProgress, Self::Failed) => true,
             (Self::ReadyForVerification, Self::VerificationRunning) => true,
             (Self::VerificationRunning, Self::Verified) => true,
             (Self::VerificationRunning, Self::VerificationFailed) => true,
+            (Self::VerificationFailed, Self::VerificationRunning) => true, // retry verification
+            (Self::VerificationFailed, Self::ImplementationInProgress) => true, // retry implementation
             (Self::Verified, Self::Completed) => true,
-            (Self::VerificationFailed, Self::ImplementationInProgress) => true, // retry
+            (Self::Verified, Self::VerificationRunning) => true, // re-verify
             (_, Self::Failed) => true,
             _ => false,
         }

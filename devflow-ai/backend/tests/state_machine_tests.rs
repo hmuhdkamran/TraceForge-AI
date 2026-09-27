@@ -32,7 +32,10 @@ fn test_valid_failure_and_retry_transitions() {
 
     // Verification failure and retry
     assert!(VerificationRunning.can_transition_to(&VerificationFailed));
+    assert!(VerificationFailed.can_transition_to(&VerificationRunning));
     assert!(VerificationFailed.can_transition_to(&ImplementationInProgress));
+    assert!(Approved.can_transition_to(&VerificationRunning));
+    assert!(Verified.can_transition_to(&VerificationRunning));
 
     // Any state can transition to Failed
     assert!(Created.can_transition_to(&Failed));

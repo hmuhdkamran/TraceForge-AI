@@ -72,8 +72,13 @@ impl WorkspaceService {
         fs::create_dir_all(dst).await?;
         let mut entries = fs::read_dir(src).await?;
         while let Some(entry) = entries.next_entry().await? {
+            let file_name = entry.file_name();
+            let name_str = file_name.to_string_lossy();
+            if name_str == "target" || name_str == ".git" {
+                continue;
+            }
             let entry_type = entry.file_type().await?;
-            let dst_path = dst.join(entry.file_name());
+            let dst_path = dst.join(file_name);
             if entry_type.is_dir() {
                 Box::pin(Self::copy_dir_all(&entry.path(), &dst_path)).await?;
             } else if entry_type.is_file() {

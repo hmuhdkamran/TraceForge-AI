@@ -160,9 +160,9 @@ impl ArtifactService {
 
     async fn import_diagnosis(
         db: &SqlitePool,
-        config: &Config,
+        _config: &Config,
         investigation_id: &str,
-        workspace_id: &str,
+        _workspace_id: &str,
         content: &str,
     ) -> ApiResult<usize> {
         let diagnosis: DiagnosisArtifact = serde_json::from_str(content)

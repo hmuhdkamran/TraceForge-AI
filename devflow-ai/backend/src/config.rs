@@ -23,11 +23,27 @@ impl Config {
 
         let workspace_root = std::env::var("WORKSPACE_ROOT")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("runs"));
+            .unwrap_or_else(|_| {
+                if std::path::Path::new("runs").exists() {
+                    PathBuf::from("runs")
+                } else if std::path::Path::new("../runs").exists() {
+                    PathBuf::from("../runs")
+                } else {
+                    PathBuf::from("runs")
+                }
+            });
 
         let sample_project_root = std::env::var("SAMPLE_PROJECT_ROOT")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("../sample_project"));
+            .unwrap_or_else(|_| {
+                if std::path::Path::new("../sample_project").exists() {
+                    PathBuf::from("../sample_project")
+                } else if std::path::Path::new("sample_project").exists() {
+                    PathBuf::from("sample_project")
+                } else {
+                    PathBuf::from("../sample_project")
+                }
+            });
 
         let is_demo_mode = std::env::var("DEMO_MODE")
             .map(|v| v == "1" || v.to_lowercase() == "true")

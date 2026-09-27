@@ -3,7 +3,7 @@ use axum::{
     Json,
     http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::errors::{AppError, ApiResult};
@@ -101,13 +101,17 @@ pub async fn run_baseline(
         ).await {
             Ok(result) => {
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
+                let _ = AuditRepo::record(&db, Some(&inv_id), "status.baseline_captured", "system", None, json!({ "summary": result.summary })).await;
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
+                let _ = AuditRepo::record(&db, Some(&inv_id), "status.awaiting_bob_investigation", "system", None, json!({})).await;
                 tracing::info!("Baseline complete: {}", result.summary);
             }
             Err(e) => {
                 tracing::error!("Baseline failed: {}", e);
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
+                let _ = AuditRepo::record(&db, Some(&inv_id), "status.baseline_captured", "system", None, json!({ "error": e.to_string() })).await;
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
+                let _ = AuditRepo::record(&db, Some(&inv_id), "status.awaiting_bob_investigation", "system", None, json!({})).await;
             }
         }
     });

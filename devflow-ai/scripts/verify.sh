@@ -63,5 +63,5 @@ fi
 
 echo ""
 echo "================================================="
-echo " All Systems Verified: M1 & M2 Complete!"
+echo " All Systems Verified: M1, M2, and M3 Complete!"
 echo "================================================="

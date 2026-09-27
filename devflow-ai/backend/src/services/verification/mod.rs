@@ -46,6 +46,7 @@ impl VerificationService {
             db,
             config,
             &investigation.id,
+            &investigation.workspace_id,
             execution_type,
             CMD_RUST_BACKEND_TESTS,
             "cargo",
@@ -70,6 +71,7 @@ impl VerificationService {
             db,
             config,
             &investigation.id,
+            &investigation.workspace_id,
             "verification",
             CMD_RUST_BACKEND_TESTS,
             "cargo",
@@ -82,6 +84,7 @@ impl VerificationService {
         db: &SqlitePool,
         config: &Config,
         investigation_id: &str,
+        workspace_id: &str,
         execution_type: &str,
         command_id: &str,
         program: &str,
@@ -89,12 +92,11 @@ impl VerificationService {
         working_dir: &PathBuf,
     ) -> ApiResult<ExecutionResult> {
         // Validate working_dir is under workspace_root
-        let workspace_root_str = config.workspace_root.canonicalize()
-            .unwrap_or_else(|_| config.workspace_root.clone())
-            .to_string_lossy()
-            .to_string();
-        let working_dir_str = working_dir.to_string_lossy().to_string();
-        if !working_dir_str.starts_with(&workspace_root_str) {
+        let canonical_workspace_root = config.workspace_root.canonicalize()
+            .unwrap_or_else(|_| config.workspace_root.clone());
+        let canonical_working_dir = working_dir.canonicalize()
+            .unwrap_or_else(|_| working_dir.clone());
+        if !canonical_working_dir.starts_with(&canonical_workspace_root) {
             return Err(AppError::PathTraversal);
         }
 
@@ -129,23 +131,12 @@ impl VerificationService {
 
                 // Save stdout/stderr to workspace files
                 let stdout_rel = format!("logs/{}_stdout.txt", execution.id);
-                let _stderr_rel = format!("logs/{}_stderr.txt", execution.id);
+                let stderr_rel = format!("logs/{}_stderr.txt", execution.id);
 
-                // Best-effort log write
-                if let Ok(ws_id) = crate::services::workspace::WorkspaceService::validate_path(
-                    config,
-                    &{
-                        // Extract workspace_id from working_dir
-                        let rel = working_dir_str.trim_start_matches(&workspace_root_str).trim_start_matches('/').trim_start_matches('\\');
-                        rel.split(['/', '\\']).next().unwrap_or("").to_string()
-                    },
-                    &stdout_rel,
-                ) {
-                    if let Some(parent) = ws_id.parent() {
-                        let _ = std::fs::create_dir_all(parent);
-                    }
-                    let _ = std::fs::write(&ws_id, &stdout);
-                }
+                let log_dir = config.workspace_root.join(workspace_id).join("logs");
+                let _ = std::fs::create_dir_all(&log_dir);
+                let _ = std::fs::write(log_dir.join(format!("{}_stdout.txt", execution.id)), &stdout);
+                let _ = std::fs::write(log_dir.join(format!("{}_stderr.txt", execution.id)), &stderr);
 
                 let summary = Self::build_summary(exit_code, &stdout, &stderr);
 
@@ -154,8 +145,8 @@ impl VerificationService {
                     &execution.id,
                     exit_code,
                     status,
-                    None,
-                    None,
+                    Some(&stdout_rel),
+                    Some(&stderr_rel),
                     duration_ms,
                     Some(&summary),
                 ).await?;

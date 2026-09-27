@@ -1,6 +1,4 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq)]
 #[sqlx(type_name = "TEXT", rename_all = "SCREAMING_SNAKE_CASE")]
@@ -48,10 +46,13 @@ impl InvestigationStatus {
             (Self::Created, Self::WorkspaceReady) => true,
             (Self::Created, Self::Failed) => true,
             (Self::WorkspaceReady, Self::BaselineRunning) => true,
+            (Self::WorkspaceReady, Self::AwaitingBobInvestigation) => true,
             (Self::WorkspaceReady, Self::Failed) => true,
             (Self::BaselineRunning, Self::BaselineCaptured) => true,
             (Self::BaselineRunning, Self::Failed) => true,
             (Self::BaselineCaptured, Self::AwaitingBobInvestigation) => true,
+            (Self::BaselineCaptured, Self::BaselineRunning) => true, // re-run baseline
+            (Self::AwaitingBobInvestigation, Self::BaselineRunning) => true, // re-run baseline
             (Self::AwaitingBobInvestigation, Self::InvestigationImported) => true,
             (Self::InvestigationImported, Self::AwaitingApproval) => true,
             (Self::InvestigationImported, Self::InvestigationImported) => true, // re-import

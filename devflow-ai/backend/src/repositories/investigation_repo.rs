@@ -19,7 +19,7 @@ impl InvestigationRepo {
         let workspace_id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
 
-        sqlx::query!(
+        sqlx::query(
             r#"INSERT INTO investigations
                 (id, title, description, project_id, scenario_id, status, workspace_id, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?, ?)"#,
@@ -77,7 +77,7 @@ impl InvestigationRepo {
     }
 
     pub async fn count(db: &SqlitePool) -> ApiResult<i64> {
-        let row = sqlx::query!("SELECT COUNT(*) as cnt FROM investigations")
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM investigations")
             .fetch_one(db)
             .await?;
         Ok(row.cnt as i64)
@@ -85,14 +85,12 @@ impl InvestigationRepo {
 
     pub async fn update_status(db: &SqlitePool, id: &str, status: &str) -> ApiResult<()> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query!(
-            "UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?",
-            status,
-            now,
-            id
-        )
-        .execute(db)
-        .await?;
+        sqlx::query("UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?")
+            .bind(status)
+            .bind(&now)
+            .bind(id)
+            .execute(db)
+            .await?;
         Ok(())
     }
 

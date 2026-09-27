@@ -134,12 +134,12 @@ impl VerificationService {
 
         match output_result {
             Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-                // Truncate if needed
-                let stdout = Self::truncate_output(&stdout, config.max_output_bytes);
-                let stderr = Self::truncate_output(&stderr, config.max_output_bytes);
+                // On Windows cargo test writes test results to stderr, not stdout.
+                // Combine both so the summary parser and UI always have the full output.
+                let raw_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let raw_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                let combined = format!("{}{}", raw_stdout, raw_stderr);
+                let combined = Self::truncate_output(&combined, config.max_output_bytes);
 
                 let exit_code = output.status.code().unwrap_or(-1) as i64;
                 let status = if exit_code == 0 { "passed" } else { "failed" };
@@ -159,7 +159,7 @@ impl VerificationService {
                     &stderr,
                 );
 
-                let summary = Self::build_summary(exit_code, &stdout, &stderr);
+                let summary = Self::build_summary(exit_code, &combined);
 
                 TestExecutionRepo::complete(
                     db,
@@ -182,7 +182,8 @@ impl VerificationService {
                     serde_json::json!({
                         "command_id": command_id,
                         "exit_code": exit_code,
-                        "duration_ms": duration_ms
+                        "duration_ms": duration_ms,
+                        "summary": summary
                     }),
                 )
                 .await?;
@@ -192,8 +193,8 @@ impl VerificationService {
                     status: status.to_string(),
                     exit_code,
                     duration_ms,
-                    stdout,
-                    stderr,
+                    stdout: combined,
+                    stderr: String::new(),
                     summary,
                 })
             }
@@ -240,10 +241,8 @@ impl VerificationService {
         }
     }
 
-    fn build_summary(exit_code: i64, stdout: &str, stderr: &str) -> String {
-        let combined = format!("{}\n{}", stdout, stderr);
-
-        // Extract test counts from cargo test output
+    fn build_summary(exit_code: i64, combined: &str) -> String {
+        // Parse cargo test result line: "test result: FAILED. 6 passed; 5 failed; ..."
         let mut passed = 0u32;
         let mut failed = 0u32;
 

@@ -1,0 +1,2033 @@
+
+# TraceForge AI — CONTRACTGUARD
+## Complete Product and Engineering Specification
+
+You are IBM Bob 2.0, acting as a principal software architect, senior Rust engineer, senior React engineer, QA automation engineer, security engineer and technical documentation specialist.
+
+Your assignment is to architect, implement, test and document TraceForge AI — ContractGuard, a production-oriented developer workflow application for diagnosing and fixing API contract inconsistencies.
+
+This project is being developed for the IBM Bob 2.0 hackathon, with a submission deadline of September 27, 2026, at 11:00 AM ET.
+
+Build a genuinely working prototype, not a static interface, incomplete scaffold or mocked demonstration.
+
+The core implementation must be modular, secure, testable, reproducible and suitable for subsequent production hardening.
+
+PRINCIPAL RULE:
+Finish one complete working bug-to-verified-fix workflow before implementing secondary functionality.
+
+Do not invent successful tests, investigation findings, Bob activities, benchmark results, screenshots or integrations.
+
+---
+
+# PART 1 — PRODUCT DEFINITION
+
+## 1.1 Product identity
+
+Name: TraceForge AI
+
+Primary module: ContractGuard
+
+Tagline: From Bug Report to Verified Fix
+
+Category: Developer Productivity / Automated Debugging / Regression Testing
+
+Primary users:
+- Full-stack developers
+- Backend developers
+- Frontend developers
+- QA engineers
+- Software maintenance teams
+- Technical leads
+
+## 1.2 Problem statement
+
+Modern full-stack applications often suffer from API contract drift: their frontend implementations, backend endpoints, automated tests and technical documentation gradually become inconsistent.
+
+Diagnosing these inconsistencies typically requires developers to inspect several parts of a codebase, manually reconstruct the intended behavior, reproduce failures, identify the root cause, coordinate changes and write regression tests.
+
+This fragmented workflow creates unnecessary investigation effort, increases rework and makes it difficult to demonstrate that a correction resolves the complete problem.
+
+TraceForge AI addresses this specific debugging and regression-testing workflow.
+
+## 1.3 Proposed solution
+
+Build a developer workflow application that coordinates:
+
+1. Bug intake
+2. Project and documentation analysis
+3. Reproduction of the reported issue
+4. Parallel investigation
+5. Evidence-backed root-cause identification
+6. Proposed correction
+7. Human approval
+8. IBM Bob-assisted implementation
+9. Automated regression testing
+10. Final verification and reporting
+11. Measured workflow outcomes
+
+The developer must be able to trace a problem from its original requirement to the final test results.
+
+## 1.4 Primary innovation
+
+Implement a Contract Evidence Graph.
+
+Each investigation must establish traceable relationships between:
+
+- Documented API requirement
+- Relevant frontend implementation
+- Relevant backend implementation
+- Observable failure
+- Reproduction test
+- Identified root cause
+- Proposed correction
+- Approved code changes
+- Regression tests
+- Final verification
+
+This evidence graph is the application's distinguishing feature.
+
+Unlike a generic chatbot, TraceForge AI organizes a complete engineering workflow with reproducible tests, recorded decisions and inspectable evidence.
+
+## 1.5 MVP boundary
+
+The hackathon prototype must support one bundled sample project and one complete investigation scenario.
+
+Build this workflow completely before supporting arbitrary repositories, additional AI services, advanced authentication or integrations with external issue trackers.
+
+Implement production-quality foundations for the delivered features. Do not describe unfinished features as production-ready.
+
+---
+
+# PART 2 — MANDATORY TECHNOLOGY STACK
+
+## 2.1 Frontend
+
+Use:
+
+- Vite
+- React
+- TypeScript with strict mode enabled
+- Tailwind CSS
+- React Router
+- Axios
+- TanStack Query
+- Lucide React
+- Recharts
+- Zod for client-side validation
+- Vitest
+- React Testing Library
+
+Use functional React components and hooks.
+
+Organize API access, shared components, route components and application types into separate modules.
+
+Use TanStack Query for server-state management.
+
+Avoid unnecessary global state.
+
+## 2.2 Backend
+
+Use Rust with:
+
+- Axum
+- Tokio
+- Serde
+- serde_json
+- SQLx
+- SQLite
+- Tower and Tower HTTP
+- Tracing and tracing-subscriber
+- UUID
+- Chrono
+- Thiserror
+- Tokio process management
+- Rust's built-in testing framework
+
+Use the current stable Rust toolchain and compatible stable crate releases.
+
+Commit Cargo.lock for reproducible builds.
+
+Use SQLx migrations to manage the database schema.
+
+Keep HTTP handlers thin. Place investigation logic, persistence, workspace management and verification inside independent service modules.
+
+Use structured errors and appropriate HTTP response codes.
+
+## 2.3 Testing
+
+Frontend:
+- Vitest
+- React Testing Library
+- API service tests
+- Request-construction tests
+
+Backend:
+- cargo test
+- Rust unit tests
+- Axum integration tests
+- Database integration tests
+
+Contract:
+- Tests derived from the documented OpenAPI specification
+- Before-and-after regression tests
+
+Browser automation is optional after the complete core workflow passes.
+
+## 2.4 Infrastructure
+
+Use:
+- Git and GitHub
+- GitHub Actions
+- Docker
+- Docker Compose for local deployment
+- Environment-based configuration
+- SQLite for the prototype
+
+The complete MVP must run locally without paid APIs.
+
+IBM Bob IDE is the actual development and investigation assistant.
+
+Do not require IBM watsonx.ai or watsonx Orchestrate for core functionality.
+
+---
+
+# PART 3 — SYSTEM ARCHITECTURE
+
+## 3.1 Architectural boundaries
+
+Divide the system into four components.
+
+A. ContractGuard frontend
+
+Provides investigation creation, workflow monitoring, artifact inspection, approval, verification and reporting.
+
+B. ContractGuard Rust backend
+
+Owns workflow state, storage, artifact validation, filesystem isolation, controlled test execution and report generation.
+
+C. IBM Bob IDE
+
+Performs actual project understanding, independent investigations, code modifications, regression-test creation and code review.
+
+D. UploadLab sample application
+
+A separate full-stack project containing deliberately introduced API contract defects.
+
+## 3.2 IBM Bob integration
+
+Do not assume that IBM Bob offers an externally callable runtime API.
+
+The primary integration must use an explicit local artifact handoff.
+
+Workflow:
+
+1. ContractGuard creates an investigation.
+2. The Rust backend creates an isolated project workspace.
+3. ContractGuard generates a task-specific Bob prompt.
+4. The developer opens the workspace in IBM Bob.
+5. Bob reads and investigates the actual project.
+6. Bob writes validated structured artifacts into the assigned run directory.
+7. The developer selects Sync Results in ContractGuard.
+8. The Rust backend imports and validates Bob's artifacts.
+9. ContractGuard presents the findings and approval controls.
+10. After approval, ContractGuard produces the implementation prompt.
+11. Bob implements the correction in the isolated workspace.
+12. ContractGuard independently executes the verification suite.
+13. The application generates an evidence-backed final report.
+
+Do not represent local process activity as IBM Bob activity.
+
+Do not claim that the dashboard directly controls Bob unless an actual supported integration has been built and tested.
+
+## 3.3 Deployment modes
+
+Support two distinct modes.
+
+LOCAL_WORKSPACE_MODE:
+- Full investigation functionality
+- Bob artifact import
+- Workspace creation
+- Controlled test execution
+- Human approval
+- Report generation
+- Bind to localhost by default
+
+PUBLIC_DEMO_MODE:
+- Read-only investigation dashboard
+- Genuine captured investigation artifacts
+- Actual recorded test results
+- Evidence graph
+- Final reports
+- No arbitrary repository operations
+- No arbitrary command execution
+- No unauthenticated mutable investigation endpoints
+
+Public demonstration mode must not require judges to install IBM Bob.
+
+---
+
+# PART 4 — SAMPLE APPLICATION
+
+## 4.1 Application name
+
+UploadLab
+
+## 4.2 Technologies
+
+Frontend:
+Vite, React, TypeScript and Tailwind CSS.
+
+Backend:
+Rust, Axum and Tokio.
+
+The sample project must be independently runnable.
+
+It must have its own Cargo.toml, package.json, tests and documentation.
+
+## 4.3 Expected application behavior
+
+UploadLab is a simple multiple-file upload application.
+
+The user selects one or more files and uploads them through a React interface.
+
+The backend validates each file and returns a structured result.
+
+The documented contract is:
+
+POST /api/upload
+
+Content-Type:
+multipart/form-data
+
+Required field:
+files
+
+Supported file formats for the demonstration:
+.txt
+.png
+
+Maximum individual file size:
+5 MB
+
+Maximum combined request size:
+10 MB
+
+Successful HTTP response:
+200 OK
+
+Example successful response:
+
+{
+  "uploaded": [
+    {
+      "filename": "document.txt",
+      "size_bytes": 1024,
+      "status": "accepted"
+    },
+    {
+      "filename": "diagram.png",
+      "size_bytes": 2048,
+      "status": "accepted"
+    }
+  ],
+  "count": 2
+}
+
+Expected behavior:
+- Support one or more files.
+- Reject empty requests.
+- Reject unsupported extensions.
+- Enforce size limits.
+- Return a consistent response schema.
+- Return a result for every accepted file.
+- Do not silently ignore additional files.
+
+Document how the API handles partial validation failures.
+
+For this prototype, reject the complete request if any selected file is invalid.
+
+Make the tests reflect this documented behavior.
+
+## 4.4 Introduce deliberate defects
+
+Create an immutable broken fixture containing two real bugs.
+
+BUG-001: FRONTEND CONTRACT MISMATCH
+
+The documented field name is "files".
+
+The frontend sends the files using an incorrect multipart field name.
+
+BUG-002: BACKEND PROCESSING DEFECT
+
+The backend processes only the first file despite the documented requirement to process multiple files.
+
+These bugs must produce observable failures.
+
+Do not make the baseline tests pass by weakening their assertions.
+
+Do not make the final tests pass by simply updating the documentation to match broken behavior.
+
+## 4.5 Sample documentation
+
+Create:
+
+- README.md
+- docs/upload_api.md
+- openapi.yaml
+- docs/acceptance_criteria.md
+- docs/architecture.md
+
+The documentation must clearly describe the intended behavior.
+
+The OpenAPI specification must be the authoritative API contract for the sample.
+
+## 4.6 Sample regression tests
+
+Create tests that check:
+
+1. Uploading one valid file.
+2. Uploading two valid files.
+3. Uploading more than two valid files.
+4. Correct multipart form-data field naming.
+5. Empty upload request.
+6. Unsupported file format.
+7. Individual file-size limit.
+8. Combined request-size limit.
+9. Successful response structure.
+10. Correct file count.
+11. No silent omission of accepted files.
+12. Rejection of an invalid batch.
+
+The initial broken fixture must fail the relevant tests for BUG-001 and BUG-002.
+
+Record the expected failing test names.
+
+Do not count unrelated environment or compilation errors as successful bug reproduction.
+
+---
+
+# PART 5 — REPOSITORY STRUCTURE
+
+Create the following structure, adjusting only when there is a clear implementation reason.
+
+devflow-ai/
+  frontend/
+    src/
+      app/
+      components/
+        layout/
+        dashboard/
+        investigation/
+        evidence/
+        verification/
+        reports/
+        shared/
+      pages/
+      hooks/
+      services/
+      schemas/
+      types/
+      utils/
+      tests/
+      App.tsx
+      main.tsx
+    public/
+    package.json
+    package-lock.json
+    tsconfig.json
+    vite.config.ts
+
+  backend/
+    src/
+      main.rs
+      lib.rs
+      config.rs
+      errors.rs
+      routes/
+      handlers/
+      models/
+      repositories/
+      services/
+        investigation/
+        workspace/
+        artifacts/
+        prompts/
+        verification/
+        reporting/
+        metrics/
+      security/
+      state/
+    migrations/
+    tests/
+    Cargo.toml
+    Cargo.lock
+
+  sample_project/
+    broken/
+      frontend/
+      backend/
+      docs/
+      openapi.yaml
+      README.md
+
+    expected_contract/
+      acceptance_criteria.md
+
+  bob/
+    prompts/
+      investigate.md
+      implement.md
+      review.md
+    schemas/
+      diagnosis.schema.json
+      artifact.schema.json
+    AGENTS.md
+    README.md
+
+  runs/
+    .gitkeep
+
+  demo_data/
+    README.md
+
+  bob_sessions/
+    README.md
+
+  submission/
+    problem_solution.md
+    bob_usage.md
+    demo_script.md
+    presentation_outline.md
+    submission_checklist.md
+
+  scripts/
+    verify.sh
+    verify.ps1
+
+  .github/
+    workflows/
+      ci.yml
+
+  .bobignore
+  .gitignore
+  .env.example
+  Dockerfile
+  compose.yaml
+  README.md
+
+Keep the intentionally failing sample separate from the primary application's normal CI test suites.
+
+Create immutable baseline fixtures and isolated working copies.
+
+Do not share mutable source files between investigation runs.
+
+---
+
+# PART 6 — DATA MODEL
+
+Use SQLite with SQLx migrations.
+
+## 6.1 Investigations
+
+Fields:
+
+id: UUID
+title: string
+description: text
+project_id: string
+scenario_id: string
+status: enum
+workspace_id: UUID
+created_at: timestamp
+updated_at: timestamp
+approved_at: nullable timestamp
+completed_at: nullable timestamp
+failure_reason: nullable text
+
+## 6.2 Investigation artifacts
+
+Fields:
+
+id: UUID
+investigation_id: UUID
+artifact_type: enum
+schema_version: integer
+relative_path: string
+content_sha256: string
+created_at: timestamp
+imported_at: timestamp
+validation_status: enum
+
+## 6.3 Findings
+
+Fields:
+
+id: UUID
+investigation_id: UUID
+finding_type: enum
+title: string
+description: text
+expected_behavior: text
+observed_behavior: text
+confidence: enum
+verification_status: enum
+created_at: timestamp
+
+## 6.4 Evidence
+
+Fields:
+
+id: UUID
+investigation_id: UUID
+finding_id: UUID
+evidence_type: enum
+source_file: string
+start_line: nullable integer
+end_line: nullable integer
+content_excerpt: nullable text
+test_id: nullable string
+description: text
+
+Store evidence references using workspace-relative paths.
+
+## 6.5 Approvals
+
+Fields:
+
+id: UUID
+investigation_id: UUID
+plan_hash: string
+decision: enum
+approved_at: timestamp
+approver_id: nullable string
+comment: nullable text
+
+The approved plan must be immutable.
+
+Any material modification to the plan after approval must require renewed approval.
+
+## 6.6 Test executions
+
+Fields:
+
+id: UUID
+investigation_id: UUID
+execution_type: enum
+command_id: string
+status: enum
+exit_code: nullable integer
+started_at: timestamp
+finished_at: nullable timestamp
+duration_ms: nullable integer
+stdout_path: nullable string
+stderr_path: nullable string
+
+## 6.7 Audit events
+
+Fields:
+
+id: UUID
+investigation_id: nullable UUID
+event_type: string
+actor_type: enum
+actor_id: nullable string
+details_json: JSON
+created_at: timestamp
+
+Record investigation creation, imports, approvals, test execution and report generation.
+
+Use transactions when multiple records must change together.
+
+---
+
+# PART 7 — WORKFLOW STATE MACHINE
+
+Implement explicit workflow states.
+
+CREATED
+WORKSPACE_READY
+BASELINE_RUNNING
+BASELINE_CAPTURED
+AWAITING_BOB_INVESTIGATION
+INVESTIGATION_IMPORTED
+AWAITING_APPROVAL
+APPROVED
+IMPLEMENTATION_IN_PROGRESS
+READY_FOR_VERIFICATION
+VERIFICATION_RUNNING
+VERIFIED
+VERIFICATION_FAILED
+COMPLETED
+FAILED
+
+Allow retrying recoverable failures.
+
+Ensure invalid transitions produce clear errors.
+
+An investigation may not enter APPROVED without an approval record.
+
+An investigation may not enter VERIFIED without independently executed successful regression tests.
+
+An investigation may not enter COMPLETED until the final report has been generated successfully.
+
+Store all meaningful transitions in the audit log.
+
+Make repeated artifact imports idempotent.
+
+---
+
+# PART 8 — FRONTEND APPLICATION
+
+Implement a complete responsive dashboard.
+
+## 8.1 Global application shell
+
+Provide:
+
+- Collapsible sidebar
+- Top navigation
+- Product branding
+- Breadcrumbs
+- Main content area
+- Responsive layouts
+- Toast notifications
+- Error boundaries
+- Loading skeletons
+- Empty states
+- Accessible form controls
+
+Navigation:
+
+Dashboard
+New Investigation
+Investigations
+Evidence
+Reports
+About
+
+Use a professional developer-tool visual style.
+
+Design tokens:
+
+Primary:
+Deep navy and IBM-inspired blue.
+
+Secondary:
+Teal for successful verification.
+
+Warning:
+Amber.
+
+Errors:
+Accessible red.
+
+Background:
+White and light gray.
+
+Use monospace fonts for code and identifiers.
+
+Ensure readable contrast and clear keyboard focus states.
+
+## 8.2 Dashboard
+
+Show real values for:
+
+- Total investigations
+- Investigations in progress
+- Investigations awaiting approval
+- Verified investigations
+- Latest test results
+- Recent activity
+
+Provide:
+
+New Investigation button
+
+Recent investigations table
+
+Workflow status indicators
+
+Measured productivity summary, when actual measurements are available.
+
+Display an appropriate empty state before the first investigation.
+
+Never populate the dashboard with fabricated statistics.
+
+## 8.3 New Investigation page
+
+Provide:
+
+Project selection
+
+Scenario selection
+
+Bug title
+
+Bug description
+
+Expected behavior
+
+Observed behavior
+
+Reproduction steps
+
+Relevant documentation preview
+
+Submit Investigation button
+
+For the MVP, select UploadLab by default.
+
+Offer a preloaded multiple-file upload failure scenario.
+
+On submission:
+- Validate input.
+- Create the investigation.
+- Create the isolated workspace.
+- Record the initial audit event.
+- Navigate to the investigation details page.
+
+## 8.4 Investigation detail page
+
+Include:
+
+Investigation overview
+
+Current workflow status
+
+Interactive workflow stepper
+
+Bug description
+
+Relevant API documentation
+
+Baseline test results
+
+IBM Bob integration status
+
+Findings
+
+Approval status
+
+Verification results
+
+Evidence graph
+
+Final report
+
+Each section must display genuine investigation data.
+
+## 8.5 IBM Bob workspace panel
+
+Provide:
+
+Generated investigation prompt
+
+Copy prompt button
+
+Workspace path
+
+Required artifacts
+
+Artifact synchronization button
+
+Import validation messages
+
+Actual imported findings
+
+Last synchronization timestamp
+
+If no Bob artifacts are available, display a clear pending state.
+
+Do not simulate agent reasoning or completion.
+
+## 8.6 Findings panel
+
+Each finding should contain:
+
+Finding identifier
+Title
+Description
+Affected component
+Expected behavior
+Observed behavior
+Source file
+Verified line references
+Supporting test evidence
+Confidence classification
+Verification status
+
+Allow developers to expand findings and inspect the underlying code excerpt.
+
+Distinguish verified evidence from hypotheses.
+
+## 8.7 Fix approval screen
+
+Display:
+
+Proposed correction
+
+Affected files
+
+Expected behavior
+
+Regression-test plan
+
+Risks
+
+Approval status
+
+Approve Fix action
+
+Reject or Request Changes action
+
+Require confirmation before approval.
+
+Show the actual approved plan identifier or hash.
+
+Do not allow approval of malformed investigation artifacts.
+
+## 8.8 Verification page
+
+Display:
+
+Baseline test results
+
+Post-fix test results
+
+Passed tests
+
+Failed tests
+
+Execution timestamps
+
+Execution duration
+
+Captured test logs
+
+Actual code diff
+
+Independent verification status
+
+Allow users to inspect individual test failures.
+
+Never hide failed tests merely because other tests pass.
+
+## 8.9 Contract Evidence Graph
+
+Create an interactive graph or connected evidence timeline.
+
+Required node categories:
+
+Requirement
+Frontend implementation
+Backend implementation
+Failing test
+Root cause
+Approved fix
+Passing test
+
+Each node should be selectable.
+
+When selected, display its source evidence and associated investigation artifacts.
+
+Use a simple reliable layout. A complex graph library is not mandatory.
+
+Only show edges supported by stored evidence relationships.
+
+If evidence is missing, show an incomplete chain rather than inventing connections.
+
+## 8.10 Reports page
+
+Show completed investigation reports.
+
+Allow:
+- Opening a report
+- Inspecting supporting artifacts
+- Downloading HTML
+- Downloading JSON
+- Reviewing verification status
+- Reviewing measured productivity metrics
+
+Use a print-friendly HTML report template.
+
+---
+
+# PART 9 — RUST BACKEND API
+
+Implement versioned REST endpoints under /api/v1.
+
+## System
+
+GET /api/v1/health
+
+Return service health.
+
+GET /api/v1/config
+
+Return safe public configuration.
+
+Never expose secrets.
+
+## Projects
+
+GET /api/v1/projects
+
+GET /api/v1/projects/:id
+
+GET /api/v1/projects/:id/scenarios
+
+## Investigations
+
+POST /api/v1/investigations
+
+GET /api/v1/investigations
+
+GET /api/v1/investigations/:id
+
+GET /api/v1/investigations/:id/events
+
+## Baseline
+
+POST /api/v1/investigations/:id/baseline
+
+GET /api/v1/investigations/:id/baseline
+
+## IBM Bob handoff
+
+GET /api/v1/investigations/:id/bob/investigation-prompt
+
+POST /api/v1/investigations/:id/artifacts/sync
+
+GET /api/v1/investigations/:id/artifacts
+
+GET /api/v1/investigations/:id/findings
+
+## Approval
+
+GET /api/v1/investigations/:id/plan
+
+POST /api/v1/investigations/:id/approval
+
+GET /api/v1/investigations/:id/bob/implementation-prompt
+
+## Verification
+
+POST /api/v1/investigations/:id/verification
+
+GET /api/v1/investigations/:id/verification
+
+GET /api/v1/investigations/:id/diff
+
+## Reporting
+
+GET /api/v1/investigations/:id/report
+
+GET /api/v1/investigations/:id/report.html
+
+GET /api/v1/investigations/:id/report.json
+
+## Metrics
+
+GET /api/v1/investigations/:id/metrics
+
+POST /api/v1/investigations/:id/manual-baseline
+
+Implement request validation, pagination where necessary, explicit response types and centralized error handling.
+
+Document all APIs.
+
+Avoid arbitrary file-path parameters.
+
+Use typed identifiers.
+
+---
+
+# PART 10 — IBM BOB AGENT WORKFLOW
+
+This workflow is central to the hackathon.
+
+Create reusable prompt templates and project instructions.
+
+## 10.1 Project understanding
+
+Use IBM Bob to inspect:
+
+- Source code
+- README files
+- Architecture documentation
+- API documentation
+- OpenAPI specification
+- Existing tests
+- Project conventions
+
+Generate AGENTS.md with relevant project instructions.
+
+Ensure that sensitive files are excluded with .bobignore.
+
+## 10.2 Investigation task
+
+The investigation prompt must instruct Bob to:
+
+1. Read the bug report.
+2. Inspect the original API requirements.
+3. Read the OpenAPI specification.
+4. Understand the frontend request construction.
+5. Understand the backend request handling.
+6. Examine existing tests.
+7. Review actual baseline failures.
+8. Investigate the likely root causes.
+9. Correlate findings.
+10. Propose a minimal fix.
+11. Generate structured artifacts.
+
+Do not edit production source files during the investigation stage.
+
+## 10.3 Subagents
+
+Use focused Explore subagents where the task is sufficiently substantial and the active mode supports them.
+
+Suggested independent investigations:
+
+Subagent A — Frontend investigation
+
+Inspect the React upload component, form-data construction and API client.
+
+Identify differences between the frontend request and documented API contract.
+
+Subagent B — Backend investigation
+
+Inspect the Rust Axum upload handler, request parsing, validation and response construction.
+
+Identify inconsistencies with the documented behavior.
+
+Subagent C — Contract and testing investigation
+
+Read the OpenAPI specification, acceptance criteria and regression tests.
+
+Determine which required behaviors are missing, incorrect or untested.
+
+Approve subagent spawning through Bob's native process.
+
+Where supported, run independent read-only investigations in parallel.
+
+Each subagent should return concise findings with actual source evidence.
+
+If a task is too small to justify a subagent, execute it directly.
+
+## 10.4 Investigation synthesis
+
+The primary Bob agent must:
+
+- Collect subagent findings.
+- Eliminate duplicates.
+- Reconcile conflicting findings.
+- Verify referenced source locations.
+- Connect findings to baseline test failures.
+- Distinguish confirmed root causes from hypotheses.
+- Prepare a minimal correction plan.
+
+The final findings must accurately reflect the repository.
+
+## 10.5 Structured artifacts
+
+Create diagnosis.json containing:
+
+schema_version
+investigation_id
+project_id
+summary
+requirements
+findings
+root_causes
+evidence
+affected_files
+test_references
+risks
+
+Each finding must have a unique identifier.
+
+Each source-code reference must contain:
+
+relative_path
+start_line
+end_line
+description
+
+Every artifact must conform to its published JSON schema.
+
+Also generate:
+
+investigation_summary.md
+fix_plan.md
+
+Do not invent source references.
+
+## 10.6 Human approval
+
+Bob must not proceed with implementation until the developer has approved the investigation plan.
+
+The application must store the approved plan and its content hash.
+
+The implementation prompt must reference the approved plan.
+
+## 10.7 Implementation task
+
+After approval:
+
+- Read the approved findings.
+- Read the authorized modification plan.
+- Correct the frontend contract mismatch.
+- Correct the Rust backend processing defect.
+- Add appropriate regression tests.
+- Preserve unrelated application behavior.
+- Run tests.
+- Inspect the actual diff.
+- Document any deviations from the plan.
+
+If implementation requires significant changes outside the approved scope, request renewed approval.
+
+## 10.8 Review task
+
+Review:
+
+- Correctness
+- Requirement coverage
+- Test coverage
+- Security implications
+- Unrelated changes
+- Remaining risks
+- Documentation consistency
+
+Produce a review artifact.
+
+Do not declare success based solely on Bob's own evaluation.
+
+Independent test execution must determine the dashboard's verified status.
+
+---
+
+# PART 11 — ARTIFACT VALIDATION
+
+Implement a robust import pipeline.
+
+Required artifacts:
+
+diagnosis.json
+investigation_summary.md
+fix_plan.md
+
+After implementation:
+
+implementation_summary.md
+changed_files.json
+review.md
+
+Use explicit schemas and schema versions.
+
+Validate:
+- Required fields
+- Data types
+- Unique finding identifiers
+- Investigation ID
+- Approved workspace
+- Source-file existence
+- Line-number ranges
+- Allowed artifact types
+- JSON size limits
+- Valid relative paths
+
+Reject path traversal and symlink escapes.
+
+Reject malformed artifacts without modifying the current valid investigation state.
+
+Use content hashes to identify changed artifacts.
+
+Store import errors separately.
+
+Repeated synchronization of identical files must not create duplicate findings.
+
+Never execute code contained in imported investigation artifacts.
+
+---
+
+# PART 12 — VERIFICATION ENGINE
+
+Implement independent test execution in Rust.
+
+## 12.1 Test execution
+
+Use Tokio process management.
+
+Execute only a predefined allowlist of command IDs.
+
+Examples:
+
+rust_backend_tests:
+cargo test --manifest-path [approved manifest]
+
+frontend_tests:
+npm test -- --run
+
+Use argument arrays rather than constructing shell command strings.
+
+Resolve command paths on the server.
+
+Never allow API clients to provide executable names or arguments.
+
+## 12.2 Execution safety
+
+The verifier must:
+
+- Operate in an approved workspace.
+- Check canonical filesystem paths.
+- Reject symbolic-link escapes.
+- Enforce execution timeouts.
+- Capture stdout and stderr.
+- Capture exit codes.
+- Store execution duration.
+- Prevent overlapping verification of the same workspace.
+- Terminate timed-out subprocess trees where supported.
+- Enforce output-size limits.
+- Preserve failed test logs.
+
+Never execute untrusted arbitrary repositories inside the application host.
+
+The bundled sample project is the only executable target for the MVP.
+
+Future arbitrary-repository support must require a separate sandboxed execution environment.
+
+## 12.3 Baseline behavior
+
+Run the relevant tests against the broken fixture before implementation.
+
+The baseline must show genuine failures corresponding to the introduced defects.
+
+Store:
+- Failing test identifiers
+- Exit codes
+- Logs
+- Execution duration
+- Failure messages
+
+Distinguish expected bug-reproduction failures from infrastructure failures.
+
+## 12.4 Post-fix behavior
+
+After Bob implements the approved correction:
+
+Run the exact baseline tests again.
+
+Also run any new regression tests.
+
+Run the remaining relevant project tests.
+
+A successful verification requires:
+- No unresolved targeted regression failures.
+- Successful execution of the required test suite.
+- The required response behavior.
+- Valid imported implementation artifacts.
+- An actual recorded verification execution.
+
+Do not mark a run verified when tests have not executed.
+
+---
+
+# PART 13 — CONTRACT EVIDENCE GRAPH
+
+Implement a persistent evidence chain for each investigation.
+
+Example:
+
+REQ-001
+The API accepts multiple files in the multipart field named "files".
+
+FRONTEND-001
+The client sends the wrong multipart field name.
+
+BACKEND-001
+The handler processes only the first file.
+
+TEST-001
+The request-construction test fails.
+
+TEST-002
+The multi-file backend test fails.
+
+ROOT-CAUSE-001
+The frontend request violates the documented field contract.
+
+ROOT-CAUSE-002
+The backend handler does not iterate over every uploaded file.
+
+FIX-001
+Correct the frontend request construction.
+
+FIX-002
+Correct the backend file-processing logic.
+
+VERIFY-001
+Original regression tests pass following the approved changes.
+
+These are illustrative identifiers, not predetermined investigation results.
+
+Actual graph nodes and edges must be generated from real findings and verification records.
+
+Each root cause should be linked to:
+- At least one requirement.
+- At least one verified source-code finding.
+- At least one reproduction test where applicable.
+- A proposed correction.
+- Post-fix verification evidence.
+
+Clearly display missing links.
+
+---
+
+# PART 14 — PRODUCTIVITY ANALYTICS
+
+The hackathon requires measurable impact.
+
+Implement a measurement module.
+
+Record actual values for:
+
+- Investigation start time
+- Investigation completion time
+- Baseline test execution duration
+- Verification duration
+- Number of confirmed root causes
+- Number of failed baseline tests
+- Number of passing post-fix tests
+- Number of modified files
+- Number of regression tests added
+- Number of correction attempts
+- Time spent awaiting human approval
+
+Separate elapsed workflow time from active developer effort.
+
+## 14.1 Manual baseline
+
+Allow the developer to record a separately measured manual debugging session for the identical scenario.
+
+Capture:
+- Scenario ID
+- Start time
+- Finish time
+- Active developer minutes
+- Completed steps
+- Final test status
+
+Do not use an estimated or fabricated manual baseline.
+
+## 14.2 Comparative metrics
+
+Where valid comparable measurements exist, calculate:
+
+Time saved:
+Manual time - Bob-assisted time
+
+Percentage time reduction:
+(Time saved / Manual time) * 100
+
+Show the number of test failures resolved.
+
+Show the number of verified regression tests.
+
+Do not assume that fewer developer actions automatically means higher quality.
+
+Clearly label unavailable or unmeasured metrics.
+
+## 14.3 Measurement presentation
+
+Create a before-and-after comparison.
+
+Display:
+- Manual baseline
+- Bob-assisted workflow
+- Actual measured values
+- Measurement methodology
+- Important limitations
+
+Use Recharts only when the available data justifies a chart.
+
+---
+
+# PART 15 — ERROR HANDLING
+
+The system must handle:
+
+- Missing project files
+- Invalid investigation input
+- Database errors
+- Workspace creation errors
+- Invalid JSON artifacts
+- Incorrect investigation identifiers
+- Missing Bob investigation output
+- Invalid state transitions
+- Rejected approval
+- Compilation errors
+- Failed regression tests
+- Test execution timeout
+- Missing Node dependencies
+- Missing Rust dependencies
+- Report generation failure
+
+Display helpful user-facing errors.
+
+Log technical details using Rust tracing.
+
+Do not expose sensitive environment variables or internal server paths through public error responses.
+
+Preserve an investigation's previous valid state when artifact synchronization fails.
+
+---
+
+# PART 16 — SECURITY
+
+Follow secure-by-default engineering practices.
+
+## File security
+
+Canonicalize approved workspace paths.
+
+Reject path traversal.
+
+Reject symbolic-link escapes.
+
+Use fixed workspace roots.
+
+Do not trust filenames supplied by clients.
+
+Limit artifact and upload sizes.
+
+## Process security
+
+Do not expose unrestricted shell execution.
+
+Use predefined test command definitions.
+
+Restrict execution to approved local fixtures.
+
+Set time and output limits.
+
+Do not run untrusted external repositories directly on the host.
+
+## API security
+
+Use explicit CORS origins.
+
+Apply request-body limits.
+
+Avoid exposing detailed internal errors.
+
+Validate all input.
+
+Disable mutation and subprocess execution in public demonstration mode.
+
+## Secret management
+
+Use environment variables for secrets.
+
+Provide .env.example with placeholders.
+
+Configure .gitignore and .bobignore.
+
+Never commit:
+- API keys
+- Passwords
+- IBM Cloud credentials
+- Personal access tokens
+- Session secrets
+- Private certificates
+- Real user data
+
+## Production authentication
+
+Design an authentication and authorization boundary.
+
+The MVP may use localhost-only development without a login screen.
+
+Before enabling publicly accessible mutable investigations, require a tested authentication system and owner or role-based authorization.
+
+Do not deploy an unauthenticated production execution API.
+
+## Auditability
+
+Record meaningful workflow actions.
+
+Protect the original broken fixture against modification.
+
+Preserve genuine test logs and investigation evidence.
+
+---
+
+# PART 17 — REPORT GENERATION
+
+Generate a complete investigation report.
+
+Required sections:
+
+1. Investigation summary
+2. Original bug report
+3. Expected API behavior
+4. Observed behavior
+5. Baseline reproduction results
+6. Documentation findings
+7. Frontend findings
+8. Backend findings
+9. Confirmed root causes
+10. Approved correction plan
+11. Implementation summary
+12. Modified files
+13. Actual code diff
+14. Regression-test results
+15. Independent verification status
+16. Evidence graph
+17. Productivity measurements
+18. Remaining risks
+19. Known limitations
+
+Support HTML and JSON exports.
+
+Reports must clearly distinguish:
+- Bob-generated investigation findings
+- System-recorded events
+- Independently executed tests
+- Developer-supplied measurements
+
+Include timestamps and artifact identifiers.
+
+Use HTML escaping for imported source-code snippets and all untrusted text.
+
+---
+
+# PART 18 — TEST STRATEGY
+
+Write actual executable tests.
+
+## Backend unit tests
+
+Test:
+- Investigation state transitions
+- Input validation
+- Artifact schema validation
+- Workspace path validation
+- Allowed command selection
+- Approval enforcement
+- Metric calculations
+
+## Backend integration tests
+
+Test:
+- Investigation creation
+- Workspace initialization
+- Baseline execution
+- Artifact synchronization
+- Human approval
+- Verification
+- Report generation
+- API failure responses
+
+## Sample application tests
+
+Test the documented upload behavior.
+
+Confirm that the original regression tests reproduce the deliberate defects.
+
+Confirm that the corrected application passes the same tests.
+
+## Frontend tests
+
+Test:
+- Form validation
+- Investigation creation
+- API request construction
+- Workflow status rendering
+- Findings rendering
+- Approval interactions
+- Missing-artifact states
+- Verification-results rendering
+
+## CI
+
+Implement GitHub Actions for:
+
+- Rust formatting
+- Rust clippy
+- Rust unit tests
+- Rust integration tests
+- TypeScript type checking
+- Frontend linting
+- Frontend tests
+- Frontend production build
+- Dependency and secret scanning where practical
+
+The intentionally broken sample must not cause the main application's CI pipeline to fail.
+
+If baseline reproduction is tested in CI, explicitly verify that the expected regression tests fail for their intended reasons.
+
+---
+
+# PART 19 — PERFORMANCE AND RELIABILITY
+
+Use asynchronous operations for long-running work.
+
+Do not block Axum request threads while waiting for subprocesses.
+
+Persist test executions and investigation state.
+
+Implement timeouts and safe cancellation.
+
+Prevent concurrent modifications to the same investigation workspace.
+
+Handle application restarts without losing persisted investigation metadata.
+
+Use indexed database queries for investigation history.
+
+Avoid unnecessarily loading complete test logs into dashboard responses.
+
+Use pagination or bounded output when returning large result sets.
+
+Ensure artifact synchronization and workflow transitions are idempotent where appropriate.
+
+Use database transactions for approval and related state changes.
+
+---
+
+# PART 20 — DEPLOYMENT
+
+Provide reproducible local and containerized deployment.
+
+## Development
+
+Frontend:
+Vite development server.
+
+Backend:
+Rust Axum server.
+
+Database:
+Local SQLite.
+
+Configure the frontend to communicate with the local backend.
+
+Document startup for Windows PowerShell and Linux/macOS.
+
+## Production-oriented build
+
+Create a multi-stage Dockerfile.
+
+Build the React frontend.
+
+Build the Rust backend in release mode.
+
+Serve compiled frontend assets through Axum.
+
+Run the final container using a non-root user.
+
+Use environment-based configuration.
+
+Provide a persistent database location.
+
+Create health-check support.
+
+## Public demonstration
+
+Deploy a read-only demonstration with genuine captured investigation results.
+
+Disable:
+- Arbitrary repository imports
+- Arbitrary command execution
+- Unauthenticated investigation mutations
+
+Document platform-specific storage limitations.
+
+Do not require Bob IDE to be running on the public demonstration server.
+
+---
+
+# PART 21 — HACKATHON SUBMISSION
+
+Create submission materials alongside the application.
+
+## Problem and Solution Statement
+
+Maximum 500 words.
+
+Include:
+- Specific problem
+- Target users
+- Existing workflow inefficiencies
+- ContractGuard's approach
+- Evidence graph
+- Actual demonstrated results
+
+## IBM Bob Usage Statement
+
+Maximum 500 words.
+
+Explain the actual use of:
+- Plan mode
+- Agent mode
+- Document understanding
+- Subagents
+- Parallel investigation
+- Implementation assistance
+- Regression-test generation
+- Code review
+
+Describe only features genuinely used.
+
+Include optional IBM technologies only if actually implemented.
+
+## Public repository
+
+Include:
+- Application code
+- Sample project
+- Documentation
+- Bob prompt templates
+- Executable tests
+- Deployment instructions
+- Real investigation artifacts suitable for publication
+- Required Bob task-session screenshots
+
+## Bob screenshots
+
+Create a bob_sessions directory.
+
+Save each team member's relevant Bob task-session summary screenshots.
+
+Use filenames identifying the team member and task.
+
+Ensure screenshots are genuine and readable.
+
+## Video demonstration
+
+Prepare a video lasting no longer than three minutes.
+
+Show the application operating for at least 90 seconds.
+
+Recommended narrative:
+
+0:00–0:20
+Explain the API contract drift problem.
+
+0:20–0:40
+Introduce ContractGuard and the broken UploadLab scenario.
+
+0:40–1:00
+Create the investigation and show the baseline failures.
+
+1:00–1:30
+Show IBM Bob analyzing the real documentation and source code.
+
+1:30–2:00
+Show the findings, evidence graph and approval.
+
+2:00–2:30
+Show the corrected code and actual regression-test results.
+
+2:30–3:00
+Show the complete report and measured impact.
+
+These timings are targets, not a substitute for showing an actual working application.
+
+## Presentation
+
+Prepare a slide outline covering:
+
+Problem
+Existing debugging workflow
+Solution
+System architecture
+IBM Bob orchestration
+Live demonstration
+Measured impact
+Future development
+
+Also document the public application URL and repository URL when they exist.
+
+Do not invent URLs or screenshots.
+
+---
+
+# PART 22 — IMPLEMENTATION ORDER
+
+Build sequentially, prioritizing a complete vertical slice.
+
+MILESTONE 1 — FOUNDATION
+
+Create:
+- Repository structure
+- Rust Axum backend
+- React frontend
+- Database setup
+- Health endpoint
+- Configuration
+- Basic application shell
+
+Verify both applications start.
+
+MILESTONE 2 — BROKEN SAMPLE
+
+Create:
+- UploadLab
+- OpenAPI specification
+- Acceptance criteria
+- Deliberate frontend defect
+- Deliberate backend defect
+- Regression tests
+
+Execute and capture genuine failing tests.
+
+Do not proceed until the broken scenario is reproducible.
+
+MILESTONE 3 — INVESTIGATION ENGINE
+
+Implement:
+- Investigation creation
+- Workspace isolation
+- Workflow state machine
+- Prompt generation
+- Baseline test execution
+- Database persistence
+
+Connect the backend to the dashboard.
+
+MILESTONE 4 — BOB INVESTIGATION
+
+Use IBM Bob to:
+- Understand the project documentation.
+- Investigate frontend and backend behavior.
+- Conduct independent investigations where justified.
+- Confirm the root causes.
+- Produce validated structured artifacts.
+
+Implement artifact synchronization and display the real results.
+
+MILESTONE 5 — FIX AND VERIFICATION
+
+Implement:
+- Human approval
+- Implementation prompt generation
+- Bob-assisted code correction
+- Regression-test updates
+- Independent test execution
+- Before-and-after results
+
+Ensure the original targeted regression tests pass.
+
+MILESTONE 6 — EVIDENCE AND REPORTS
+
+Implement:
+- Evidence graph
+- Code-diff display
+- Final HTML report
+- JSON export
+- Actual measurement dashboard
+
+MILESTONE 7 — HARDENING
+
+Complete:
+- Error handling
+- Additional tests
+- Security checks
+- Responsive layouts
+- Logging
+- Docker
+- CI
+- README
+
+MILESTONE 8 — SUBMISSION
+
+Prepare:
+- Actual Bob session screenshots
+- Real completed investigation artifacts
+- Public repository
+- Deployed demonstration
+- Problem and solution statement
+- IBM Bob usage statement
+- Video
+- Presentation
+
+If resources are constrained, prioritize Milestones 1–6 and essential submission assets.
+
+Do not spend the remaining development budget on optional styling or speculative integrations while the end-to-end workflow is incomplete.
+
+---
+
+# PART 23 — DEFINITION OF DONE
+
+The primary demonstration is complete only when:
+
+1. The dashboard starts successfully.
+2. The Rust API starts successfully.
+3. The broken UploadLab fixture starts.
+4. Real baseline regression tests reproduce the defects.
+5. A developer creates an investigation.
+6. ContractGuard initializes an isolated workspace.
+7. The investigation prompt is generated correctly.
+8. IBM Bob reads the actual project documentation.
+9. IBM Bob investigates the actual source files.
+10. Bob produces real structured findings.
+11. The dashboard imports and validates those findings.
+12. The developer reviews and approves the proposed fix.
+13. Bob modifies the isolated source code.
+14. Appropriate regression tests exist.
+15. The Rust verification service independently runs the tests.
+16. The original defects are no longer reproducible.
+17. The application displays the actual code changes.
+18. The evidence graph contains verified relationships.
+19. The application generates a truthful final report.
+20. Measured metrics are clearly distinguished from unavailable measurements.
+
+Every completed item must have verifiable evidence.
+
+Do not substitute screenshots of mocked results for executable functionality.
+
+---
+
+# PART 24 — FINAL INSTRUCTIONS TO IBM BOB
+
+First, inspect the available workspace and installed development tools.
+
+Create a short implementation plan and task checklist.
+
+Review the proposed architecture for unnecessary complexity.
+
+If a simpler implementation can fulfill the same verified requirements, prefer it.
+
+Use Plan mode for architectural decisions and Agent mode for implementation.
+
+Delegate independent, substantial tasks where doing so improves execution.
+
+Prevent concurrent edits to the same files.
+
+Execute each milestone and verify its acceptance criteria.
+
+Keep dependency installation, code generation, tests and documentation reproducible.
+
+Prioritize the smallest complete working implementation over a larger unfinished application.
+
+Never fabricate results.
+
+At the end of each milestone, provide:
+- Features completed
+- Files created or modified
+- Commands executed
+- Tests passed
+- Tests failed
+- Known limitations
+- Next implementation steps
+
+At the end of the project, provide:
+- Verified implementation summary
+- Working startup commands
+- Complete test summary
+- Actual IBM Bob usage summary
+- Submission artifact locations
+- Remaining limitations
+
+Begin by inspecting the workspace, creating the implementation checklist and building the functional MVP.

@@ -78,6 +78,16 @@ impl EvidenceRepo {
             "DELETE FROM evidence WHERE investigation_id = ?",
             investigation_id
         )
+        .bind(&id)
+        .bind(investigation_id)
+        .bind(finding_id)
+        .bind(evidence_type)
+        .bind(source_file)
+        .bind(start_line)
+        .bind(end_line)
+        .bind(content_excerpt)
+        .bind(test_id)
+        .bind(description)
         .execute(db)
         .await?;
         Ok(())

@@ -1,0 +1,104 @@
+openapi: "3.0.3"
+info:
+  title: UploadLab API
+  version: "1.0.0"
+  description: |
+    File upload API for UploadLab.
+    This specification is the authoritative contract for the upload endpoint.
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+paths:
+  /api/upload:
+    post:
+      summary: Upload one or more files
+      operationId: uploadFiles
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - files
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: |
+                    One or more files to upload.
+                    The multipart field name MUST be "files" (plural).
+                    Supported formats: .txt, .png
+                    Maximum individual file size: 5 MB
+                    Maximum combined request size: 10 MB
+      responses:
+        "200":
+          description: All files accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+              example:
+                uploaded:
+                  - filename: "document.txt"
+                    size_bytes: 1024
+                    status: "accepted"
+                  - filename: "diagram.png"
+                    size_bytes: 2048
+                    status: "accepted"
+                count: 2
+        "400":
+          description: No files provided or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "422":
+          description: Validation failure (unsupported format, file too large, or invalid batch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    UploadResponse:
+      type: object
+      required:
+        - uploaded
+        - count
+      properties:
+        uploaded:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadedFile'
+          description: Results for every accepted file. No file is silently omitted.
+        count:
+          type: integer
+          description: Number of accepted files. Must equal length of `uploaded` array.
+
+    UploadedFile:
+      type: object
+      required:
+        - filename
+        - size_bytes
+        - status
+      properties:
+        filename:
+          type: string
+        size_bytes:
+          type: integer
+        status:
+          type: string
+          enum: ["accepted"]
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string

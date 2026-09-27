@@ -1,13 +1,13 @@
+use sqlx::SqlitePool;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tokio::process::Command;
 use tokio::time::timeout;
-use sqlx::SqlitePool;
 
 use crate::config::Config;
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::models::investigation::Investigation;
-use crate::repositories::{TestExecutionRepo, AuditRepo};
+use crate::repositories::{AuditRepo, TestExecutionRepo};
 
 /// Allowed test command definitions. Never accept command IDs from clients.
 pub const CMD_RUST_BACKEND_TESTS: &str = "rust_backend_tests";
@@ -52,7 +52,8 @@ impl VerificationService {
             "cargo",
             &["test", "--", "--nocapture"],
             &broken_backend,
-        ).await
+        )
+        .await
     }
 
     pub async fn run_verification(
@@ -64,7 +65,9 @@ impl VerificationService {
         let broken_backend = workspace.join("broken").join("backend");
 
         if !broken_backend.exists() {
-            return Err(AppError::Workspace("Backend workspace not found for verification".into()));
+            return Err(AppError::Workspace(
+                "Backend workspace not found for verification".into(),
+            ));
         }
 
         Self::run_command(
@@ -77,7 +80,8 @@ impl VerificationService {
             "cargo",
             &["test", "--", "--nocapture"],
             &broken_backend,
-        ).await
+        )
+        .await
     }
 
     async fn run_command(
@@ -92,16 +96,20 @@ impl VerificationService {
         working_dir: &PathBuf,
     ) -> ApiResult<ExecutionResult> {
         // Validate working_dir is under workspace_root
-        let canonical_workspace_root = config.workspace_root.canonicalize()
+        let canonical_workspace_root = config
+            .workspace_root
+            .canonicalize()
             .unwrap_or_else(|_| config.workspace_root.clone());
-        let canonical_working_dir = working_dir.canonicalize()
+        let canonical_working_dir = working_dir
+            .canonicalize()
             .unwrap_or_else(|_| working_dir.clone());
         if !canonical_working_dir.starts_with(&canonical_workspace_root) {
             return Err(AppError::PathTraversal);
         }
 
         // Create execution record
-        let execution = TestExecutionRepo::create(db, investigation_id, execution_type, command_id).await?;
+        let execution =
+            TestExecutionRepo::create(db, investigation_id, execution_type, command_id).await?;
 
         let start = Instant::now();
 
@@ -111,15 +119,16 @@ impl VerificationService {
         cmd.args(args).current_dir(working_dir);
 
         // Share target cache if available so dependency compilation doesn't timeout
-        let shared_target = config.sample_project_root.join("broken").join("backend").join("target");
+        let shared_target = config
+            .sample_project_root
+            .join("broken")
+            .join("backend")
+            .join("target");
         if shared_target.exists() {
             cmd.env("CARGO_TARGET_DIR", &shared_target);
         }
 
-        let output_result = timeout(
-            timeout_duration,
-            cmd.output(),
-        ).await;
+        let output_result = timeout(timeout_duration, cmd.output()).await;
 
         let duration_ms = start.elapsed().as_millis() as i64;
 
@@ -141,8 +150,14 @@ impl VerificationService {
 
                 let log_dir = config.workspace_root.join(workspace_id).join("logs");
                 let _ = std::fs::create_dir_all(&log_dir);
-                let _ = std::fs::write(log_dir.join(format!("{}_stdout.txt", execution.id)), &stdout);
-                let _ = std::fs::write(log_dir.join(format!("{}_stderr.txt", execution.id)), &stderr);
+                let _ = std::fs::write(
+                    log_dir.join(format!("{}_stdout.txt", execution.id)),
+                    &stdout,
+                );
+                let _ = std::fs::write(
+                    log_dir.join(format!("{}_stderr.txt", execution.id)),
+                    &stderr,
+                );
 
                 let summary = Self::build_summary(exit_code, &stdout, &stderr);
 
@@ -155,7 +170,8 @@ impl VerificationService {
                     Some(&stderr_rel),
                     duration_ms,
                     Some(&summary),
-                ).await?;
+                )
+                .await?;
 
                 AuditRepo::record(
                     db,
@@ -168,7 +184,8 @@ impl VerificationService {
                         "exit_code": exit_code,
                         "duration_ms": duration_ms
                     }),
-                ).await?;
+                )
+                .await?;
 
                 Ok(ExecutionResult {
                     execution_id: execution.id,
@@ -181,11 +198,34 @@ impl VerificationService {
                 })
             }
             Ok(Err(e)) => {
-                TestExecutionRepo::complete(db, &execution.id, -1, "error", None, None, duration_ms, Some(&e.to_string())).await?;
-                Err(AppError::Workspace(format!("Process execution failed: {}", e)))
+                TestExecutionRepo::complete(
+                    db,
+                    &execution.id,
+                    -1,
+                    "error",
+                    None,
+                    None,
+                    duration_ms,
+                    Some(&e.to_string()),
+                )
+                .await?;
+                Err(AppError::Workspace(format!(
+                    "Process execution failed: {}",
+                    e
+                )))
             }
             Err(_) => {
-                TestExecutionRepo::complete(db, &execution.id, -1, "timeout", None, None, duration_ms, Some("Execution timed out")).await?;
+                TestExecutionRepo::complete(
+                    db,
+                    &execution.id,
+                    -1,
+                    "timeout",
+                    None,
+                    None,
+                    duration_ms,
+                    Some("Execution timed out"),
+                )
+                .await?;
                 Err(AppError::Workspace("Test execution timed out".into()))
             }
         }
@@ -210,8 +250,12 @@ impl VerificationService {
         for line in combined.lines() {
             if line.contains("test result:") {
                 // e.g. "test result: FAILED. 3 passed; 2 failed;"
-                if let Some(p) = Self::extract_count(line, "passed") { passed += p; }
-                if let Some(f) = Self::extract_count(line, "failed") { failed += f; }
+                if let Some(p) = Self::extract_count(line, "passed") {
+                    passed += p;
+                }
+                if let Some(f) = Self::extract_count(line, "failed") {
+                    failed += f;
+                }
             }
         }
 

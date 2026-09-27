@@ -1,20 +1,20 @@
-use std::path::PathBuf;
-use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::Json;
-use sqlx::sqlite::SqlitePoolOptions;
 use contractguard_lib::config::Config;
-use contractguard_lib::models::investigation::{CreateInvestigationRequest, ApprovalRequest};
-use contractguard_lib::repositories::{InvestigationRepo, AuditRepo};
+use contractguard_lib::handlers::{
+    approvals::{create_approval, get_plan},
+    artifacts::sync_artifacts,
+    investigations::get_bob_implementation_prompt,
+    verification::{get_diff, get_verification, run_verification},
+};
+use contractguard_lib::models::investigation::{ApprovalRequest, CreateInvestigationRequest};
+use contractguard_lib::repositories::{AuditRepo, InvestigationRepo};
 use contractguard_lib::services::investigation::InvestigationService;
 use contractguard_lib::services::verification::VerificationService;
 use contractguard_lib::state::AppState;
-use contractguard_lib::handlers::{
-    artifacts::sync_artifacts,
-    approvals::{get_plan, create_approval},
-    investigations::get_bob_implementation_prompt,
-    verification::{run_verification, get_verification, get_diff},
-};
+use sqlx::sqlite::SqlitePoolOptions;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 async fn setup_test_db() -> sqlx::SqlitePool {
     let pool = SqlitePoolOptions::new()
@@ -54,6 +54,7 @@ fn test_config(test_name: &str) -> (Config, PathBuf) {
         max_body_bytes: 1024 * 1024,
         test_timeout_secs: 120,
         max_output_bytes: 1024 * 1024,
+        static_dir: None,
     };
 
     (config, test_dir)
@@ -75,7 +76,9 @@ async fn test_human_approval_workflow() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
     let ws_path = config.workspace_root.join(&inv.workspace_id);
     let bob_artifacts_dir = ws_path.join("bob_artifacts");
     std::fs::create_dir_all(&bob_artifacts_dir).unwrap();
@@ -100,12 +103,17 @@ async fn test_human_approval_workflow() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Sync artifacts to advance state to AWAITING_APPROVAL
-    let _ = sync_artifacts(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let _ = sync_artifacts(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
 
-    let plan_res = get_plan(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let plan_res = get_plan(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let plan_val = plan_res.0;
     assert_eq!(plan_val["fix_plan"], fix_plan_content);
     assert!(!plan_val["plan_hash"].as_str().unwrap().is_empty());
@@ -121,10 +129,15 @@ async fn test_human_approval_workflow() {
         State(shared_state.clone()),
         Path(inv.id.clone()),
         Json(reject_req),
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
     assert_eq!(reject_res.0["approval"]["decision"], "rejected");
 
-    let inv_after_reject = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let inv_after_reject = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(inv_after_reject.approved_at.is_none());
 
     // 2. Approval decision
@@ -137,27 +150,43 @@ async fn test_human_approval_workflow() {
         State(shared_state.clone()),
         Path(inv.id.clone()),
         Json(approve_req),
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
     assert_eq!(approve_res.0["approval"]["decision"], "approved");
     assert_eq!(approve_res.0["approval"]["plan_hash"], expected_hash);
 
-    let inv_after_approve = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let inv_after_approve = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(inv_after_approve.approved_at.is_some());
     assert_eq!(inv_after_approve.status, "APPROVED");
 
     // Verify audit trail
-    let audit_events = AuditRepo::list_for_investigation(&db, &inv.id).await.unwrap();
-    assert!(audit_events.iter().any(|e| e.event_type == "approval.rejected"));
-    assert!(audit_events.iter().any(|e| e.event_type == "approval.approved"));
-    assert!(audit_events.iter().any(|e| e.event_type == "status.approved"));
+    let audit_events = AuditRepo::list_for_investigation(&db, &inv.id)
+        .await
+        .unwrap();
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "approval.rejected"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "approval.approved"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "status.approved"));
 
     // Verify implementation prompt is unlocked
-    let prompt_res = get_bob_implementation_prompt(
-        State(shared_state.clone()),
-        Path(inv.id.clone()),
-    ).await.unwrap();
+    let prompt_res =
+        get_bob_implementation_prompt(State(shared_state.clone()), Path(inv.id.clone()))
+            .await
+            .unwrap();
     assert_eq!(prompt_res.0["plan_hash"], expected_hash);
-    assert!(prompt_res.0["prompt"].as_str().unwrap().contains(&expected_hash));
+    assert!(prompt_res.0["prompt"]
+        .as_str()
+        .unwrap()
+        .contains(&expected_hash));
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }
@@ -178,7 +207,9 @@ async fn test_empty_plan_approval_rejected() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
 
     let approve_req = ApprovalRequest {
         decision: "approved".into(),
@@ -191,8 +222,12 @@ async fn test_empty_plan_approval_rejected() {
         State(shared_state.clone()),
         Path(inv.id.clone()),
         Json(approve_req),
-    ).await;
-    assert!(res.is_err(), "Approval without AWAITING_APPROVAL status must fail");
+    )
+    .await;
+    assert!(
+        res.is_err(),
+        "Approval without AWAITING_APPROVAL status must fail"
+    );
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }
@@ -213,20 +248,17 @@ async fn test_verification_and_prompt_require_approval() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
 
     // 1. Implementation prompt blocked
-    let prompt_err = get_bob_implementation_prompt(
-        State(shared_state.clone()),
-        Path(inv.id.clone()),
-    ).await;
+    let prompt_err =
+        get_bob_implementation_prompt(State(shared_state.clone()), Path(inv.id.clone())).await;
     assert!(prompt_err.is_err());
 
     // 2. Verification execution blocked
-    let verify_err = run_verification(
-        State(shared_state.clone()),
-        Path(inv.id.clone()),
-    ).await;
+    let verify_err = run_verification(State(shared_state.clone()), Path(inv.id.clone())).await;
     assert!(verify_err.is_err());
 
     let _ = std::fs::remove_dir_all(&test_dir);
@@ -248,19 +280,21 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
         reproduction_steps: Some("Upload 2 or 3 files".into()),
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
 
     // -------------------------------------------------------------------------
     // Phase 1: Run Baseline on Broken Workspace (Expects Failure)
     // -------------------------------------------------------------------------
-    let baseline_result = VerificationService::run_baseline(
-        &db,
-        &config,
-        &inv,
-        "baseline",
-    ).await.expect("Baseline run failed");
+    let baseline_result = VerificationService::run_baseline(&db, &config, &inv, "baseline")
+        .await
+        .expect("Baseline run failed");
 
-    assert_ne!(baseline_result.exit_code, 0, "Baseline tests on broken fixture should fail");
+    assert_ne!(
+        baseline_result.exit_code, 0,
+        "Baseline tests on broken fixture should fail"
+    );
     assert_eq!(baseline_result.status, "failed");
     assert!(
         baseline_result.summary.contains("passed") && baseline_result.summary.contains("failed"),
@@ -315,9 +349,12 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
-    let _ = sync_artifacts(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let _ = sync_artifacts(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
 
     // Human Approval
     let approve_req = ApprovalRequest {
@@ -329,16 +366,26 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
         State(shared_state.clone()),
         Path(inv.id.clone()),
         Json(approve_req),
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
 
-    let approved_inv = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let approved_inv = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(approved_inv.status, "APPROVED");
 
     // -------------------------------------------------------------------------
     // Phase 3: Bob Implementation (Fix Code in Isolated Workspace)
     // -------------------------------------------------------------------------
-    let backend_main = ws_path.join("broken").join("backend").join("src").join("main.rs");
-    let original_main_code = std::fs::read_to_string(&backend_main).expect("Failed to read backend main.rs");
+    let backend_main = ws_path
+        .join("broken")
+        .join("backend")
+        .join("src")
+        .join("main.rs");
+    let original_main_code =
+        std::fs::read_to_string(&backend_main).expect("Failed to read backend main.rs");
 
     // Apply the fix for BUG-002: replace `if let Some(field)` with `while let Some(field)` and check uploaded.is_empty()
     // Also update regression test `test_invalid_batch_behavior_bug002` to assert 422 rejection on invalid batch
@@ -361,10 +408,15 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
     std::fs::write(&backend_main, &fixed_main_code).expect("Failed to write fixed backend main.rs");
 
     // Apply the fix for BUG-001 in frontend: replace 'file' with 'files'
-    let frontend_api = ws_path.join("broken").join("frontend").join("src").join("api.ts");
+    let frontend_api = ws_path
+        .join("broken")
+        .join("frontend")
+        .join("src")
+        .join("api.ts");
     if frontend_api.exists() {
         let original_api_code = std::fs::read_to_string(&frontend_api).unwrap();
-        let fixed_api_code = original_api_code.replace("formData.append('file',", "formData.append('files',");
+        let fixed_api_code =
+            original_api_code.replace("formData.append('file',", "formData.append('files',");
         std::fs::write(&frontend_api, &fixed_api_code).unwrap();
     }
 
@@ -374,7 +426,9 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
         "# Implementation Summary\n\n- Fixed BUG-002 by converting `if let Some(field)` to `while let Some(field)` loop\n- Fixed BUG-001 by changing multipart field to 'files'\n",
     ).unwrap();
 
-    let plan = get_plan(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let plan = get_plan(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let plan_hash = plan.0["plan_hash"].as_str().unwrap();
 
     let changed_files_json = serde_json::json!({
@@ -397,21 +451,24 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
     std::fs::write(
         bob_artifacts_dir.join("changed_files.json"),
         serde_json::to_string_pretty(&changed_files_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // -------------------------------------------------------------------------
     // Phase 4: Independent Verification Execution (Expects Success!)
     // -------------------------------------------------------------------------
-    let verification_result = VerificationService::run_verification(
-        &db,
-        &config,
-        &approved_inv,
-    ).await.expect("Verification run failed");
+    let verification_result = VerificationService::run_verification(&db, &config, &approved_inv)
+        .await
+        .expect("Verification run failed");
 
-    assert_eq!(verification_result.exit_code, 0, "Verification tests should PASS after fix");
+    assert_eq!(
+        verification_result.exit_code, 0,
+        "Verification tests should PASS after fix"
+    );
     assert_eq!(verification_result.status, "passed");
     assert!(
-        verification_result.summary.contains("11 passed, 0 failed") || verification_result.summary.contains("passed"),
+        verification_result.summary.contains("11 passed, 0 failed")
+            || verification_result.summary.contains("passed"),
         "Summary should record all tests passing: {}",
         verification_result.summary
     );
@@ -419,7 +476,9 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
     // -------------------------------------------------------------------------
     // Phase 5: Before / After Comparison & Diff Endpoint Inspection
     // -------------------------------------------------------------------------
-    let verification_status = get_verification(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let verification_status = get_verification(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let val = verification_status.0;
 
     let baseline_exec = &val["baseline"];
@@ -432,14 +491,24 @@ async fn test_end_to_end_fix_and_verification_pipeline() {
     assert_eq!(verif_exec["exit_code"], 0);
 
     // Inspect Diff endpoint
-    let diff_res = get_diff(State(shared_state.clone()), Path(inv.id.clone())).await.unwrap();
+    let diff_res = get_diff(State(shared_state.clone()), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let diff_val = diff_res.0;
-    assert!(diff_val["diff"].as_str().unwrap().contains("while let Some(field)"));
+    assert!(diff_val["diff"]
+        .as_str()
+        .unwrap()
+        .contains("while let Some(field)"));
 
     // -------------------------------------------------------------------------
     // Phase 6: Assert Immutability of Original Sample Project
     // -------------------------------------------------------------------------
-    let original_sample_main = config.sample_project_root.join("broken").join("backend").join("src").join("main.rs");
+    let original_sample_main = config
+        .sample_project_root
+        .join("broken")
+        .join("backend")
+        .join("src")
+        .join("main.rs");
     let original_sample_code = std::fs::read_to_string(&original_sample_main).unwrap();
     assert!(
         original_sample_code.contains("if let Some(field) = multipart.next_field().await"),

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 pub mod config;
 pub mod errors;
 pub mod handlers;
@@ -42,8 +44,18 @@ pub async fn app(config: Config) -> anyhow::Result<Router> {
             .allow_headers(tower_http::cors::Any)
     };
 
-    let router = Router::new()
-        .merge(routes::all_routes(state))
+    let mut router = Router::new().merge(routes::all_routes(state));
+
+    if let Some(ref static_dir) = config.static_dir {
+        if static_dir.exists() {
+            let index_file = static_dir.join("index.html");
+            let serve_dir = tower_http::services::ServeDir::new(static_dir)
+                .not_found_service(tower_http::services::ServeFile::new(index_file));
+            router = router.fallback_service(serve_dir);
+        }
+    }
+
+    let router = router
         .layer(cors)
         .layer(RequestBodyLimitLayer::new(config.max_body_bytes))
         .layer(TraceLayer::new_for_http());

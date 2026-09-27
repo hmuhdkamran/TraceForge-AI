@@ -1,13 +1,13 @@
-use std::path::PathBuf;
-use std::sync::Arc;
 use axum::extract::{Path, State};
-use sqlx::sqlite::SqlitePoolOptions;
 use contractguard_lib::config::Config;
+use contractguard_lib::handlers::artifacts::{list_artifacts, list_findings, sync_artifacts};
 use contractguard_lib::models::investigation::CreateInvestigationRequest;
-use contractguard_lib::repositories::{InvestigationRepo, FindingRepo, EvidenceRepo, AuditRepo};
+use contractguard_lib::repositories::{AuditRepo, EvidenceRepo, FindingRepo, InvestigationRepo};
 use contractguard_lib::services::investigation::InvestigationService;
 use contractguard_lib::state::AppState;
-use contractguard_lib::handlers::artifacts::{sync_artifacts, list_artifacts, list_findings};
+use sqlx::sqlite::SqlitePoolOptions;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 async fn setup_test_db() -> sqlx::SqlitePool {
     let pool = SqlitePoolOptions::new()
@@ -47,6 +47,7 @@ fn test_config(test_name: &str) -> (Config, PathBuf) {
         max_body_bytes: 1024 * 1024,
         test_timeout_secs: 60,
         max_output_bytes: 1024 * 1024,
+        static_dir: None,
     };
 
     (config, test_dir)
@@ -155,7 +156,8 @@ async fn test_successful_artifact_sync_and_findings() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).expect("Failed to write diagnosis.json");
+    )
+    .expect("Failed to write diagnosis.json");
 
     // 2. Write investigation_summary.md
     std::fs::write(
@@ -190,7 +192,8 @@ async fn test_successful_artifact_sync_and_findings() {
     std::fs::write(
         bob_artifacts_dir.join("changed_files.json"),
         serde_json::to_string_pretty(&changed_files_json).unwrap(),
-    ).expect("Failed to write changed_files.json");
+    )
+    .expect("Failed to write changed_files.json");
 
     // Perform Sync via Handler
     let shared_state = Arc::new(AppState::new(db.clone(), config.clone()));
@@ -207,11 +210,15 @@ async fn test_successful_artifact_sync_and_findings() {
     // Verify DB findings
     let findings = FindingRepo::list(&db, &inv.id).await.unwrap();
     assert_eq!(findings.len(), 2);
-    assert!(findings.iter().any(|f| f.finding_type == "contract_mismatch"));
+    assert!(findings
+        .iter()
+        .any(|f| f.finding_type == "contract_mismatch"));
     assert!(findings.iter().any(|f| f.finding_type == "backend_defect"));
 
     // Verify DB evidence & excerpt extraction
-    let evidence = EvidenceRepo::list_for_investigation(&db, &inv.id).await.unwrap();
+    let evidence = EvidenceRepo::list_for_investigation(&db, &inv.id)
+        .await
+        .unwrap();
     assert!(!evidence.is_empty(), "Evidence should have been imported");
     // At least one evidence item should have content_excerpt populated
     assert!(
@@ -220,14 +227,25 @@ async fn test_successful_artifact_sync_and_findings() {
     );
 
     // Verify investigation status advanced to AWAITING_APPROVAL
-    let updated_inv = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let updated_inv = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(updated_inv.status, "AWAITING_APPROVAL");
 
     // Verify audit events
-    let audit_events = AuditRepo::list_for_investigation(&db, &inv.id).await.unwrap();
-    assert!(audit_events.iter().any(|e| e.event_type == "artifacts.synced"));
-    assert!(audit_events.iter().any(|e| e.event_type == "status.investigation_imported"));
-    assert!(audit_events.iter().any(|e| e.event_type == "status.awaiting_approval"));
+    let audit_events = AuditRepo::list_for_investigation(&db, &inv.id)
+        .await
+        .unwrap();
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "artifacts.synced"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "status.investigation_imported"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "status.awaiting_approval"));
 
     // Test List Artifacts endpoint
     let list_res = list_artifacts(State(shared_state.clone()), Path(inv.id.clone()))
@@ -252,7 +270,11 @@ async fn test_successful_artifact_sync_and_findings() {
     assert_eq!(re_res.0["findings_created"], 2);
 
     let re_findings = FindingRepo::list(&db, &inv.id).await.unwrap();
-    assert_eq!(re_findings.len(), 2, "Idempotent sync must not duplicate findings");
+    assert_eq!(
+        re_findings.len(),
+        2,
+        "Idempotent sync must not duplicate findings"
+    );
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }
@@ -272,7 +294,9 @@ async fn test_artifact_sync_rejects_investigation_id_mismatch() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
     let ws_path = config.workspace_root.join(&inv.workspace_id);
     let bob_artifacts_dir = ws_path.join("bob_artifacts");
     std::fs::create_dir_all(&bob_artifacts_dir).unwrap();
@@ -295,19 +319,28 @@ async fn test_artifact_sync_rejects_investigation_id_mismatch() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     let shared_state = Arc::new(AppState::new(db.clone(), config.clone()));
-    let res = sync_artifacts(State(shared_state), Path(inv.id.clone())).await.unwrap();
+    let res = sync_artifacts(State(shared_state), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let val = res.0;
 
     assert_eq!(val["findings_created"], 0);
     let errors = val["errors"].as_array().unwrap();
     assert!(!errors.is_empty(), "Should report mismatch error");
-    assert!(errors[0].as_str().unwrap().contains("investigation_id mismatch"));
+    assert!(errors[0]
+        .as_str()
+        .unwrap()
+        .contains("investigation_id mismatch"));
 
     // Verify investigation status was NOT modified
-    let check_inv = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let check_inv = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(check_inv.status, "WORKSPACE_READY");
 
     let findings = FindingRepo::list(&db, &inv.id).await.unwrap();
@@ -331,7 +364,9 @@ async fn test_artifact_sync_rejects_path_traversal() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
     let ws_path = config.workspace_root.join(&inv.workspace_id);
     let bob_artifacts_dir = ws_path.join("bob_artifacts");
     std::fs::create_dir_all(&bob_artifacts_dir).unwrap();
@@ -361,19 +396,28 @@ async fn test_artifact_sync_rejects_path_traversal() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     let shared_state = Arc::new(AppState::new(db.clone(), config.clone()));
-    let res = sync_artifacts(State(shared_state), Path(inv.id.clone())).await.unwrap();
+    let res = sync_artifacts(State(shared_state), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let val = res.0;
 
     assert_eq!(val["findings_created"], 0);
     let errors = val["errors"].as_array().unwrap();
     assert!(!errors.is_empty(), "Should report path traversal error");
-    assert!(errors[0].as_str().unwrap().contains("Path traversal rejected"));
+    assert!(errors[0]
+        .as_str()
+        .unwrap()
+        .contains("Path traversal rejected"));
 
     // Verify investigation status was NOT modified
-    let check_inv = InvestigationRepo::get_by_id(&db, &inv.id).await.unwrap().unwrap();
+    let check_inv = InvestigationRepo::get_by_id(&db, &inv.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(check_inv.status, "WORKSPACE_READY");
 
     let _ = std::fs::remove_dir_all(&test_dir);
@@ -394,7 +438,9 @@ async fn test_artifact_sync_rejects_duplicate_finding_ids() {
         reproduction_steps: None,
     };
 
-    let inv = InvestigationService::create(&db, &config, req).await.unwrap();
+    let inv = InvestigationService::create(&db, &config, req)
+        .await
+        .unwrap();
     let ws_path = config.workspace_root.join(&inv.workspace_id);
     let bob_artifacts_dir = ws_path.join("bob_artifacts");
     std::fs::create_dir_all(&bob_artifacts_dir).unwrap();
@@ -423,16 +469,22 @@ async fn test_artifact_sync_rejects_duplicate_finding_ids() {
     std::fs::write(
         bob_artifacts_dir.join("diagnosis.json"),
         serde_json::to_string_pretty(&diagnosis_json).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 
     let shared_state = Arc::new(AppState::new(db.clone(), config.clone()));
-    let res = sync_artifacts(State(shared_state), Path(inv.id.clone())).await.unwrap();
+    let res = sync_artifacts(State(shared_state), Path(inv.id.clone()))
+        .await
+        .unwrap();
     let val = res.0;
 
     assert_eq!(val["findings_created"], 0);
     let errors = val["errors"].as_array().unwrap();
     assert!(!errors.is_empty(), "Should report duplicate ID error");
-    assert!(errors[0].as_str().unwrap().contains("Duplicate finding IDs"));
+    assert!(errors[0]
+        .as_str()
+        .unwrap()
+        .contains("Duplicate finding IDs"));
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }

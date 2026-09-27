@@ -45,28 +45,41 @@ impl EvidenceRepo {
         })
     }
 
-    pub async fn list_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<Vec<Evidence>> {
+    pub async fn list_for_investigation(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<Vec<Evidence>> {
         let rows = sqlx::query!(
             "SELECT id, investigation_id, finding_id, evidence_type, source_file, start_line, end_line, content_excerpt, test_id, description FROM evidence WHERE investigation_id = ? ORDER BY rowid ASC",
             investigation_id
         ).fetch_all(db).await?;
-        Ok(rows.into_iter().map(|r| Evidence {
-            id: r.id.unwrap_or_default(),
-            investigation_id: r.investigation_id,
-            finding_id: r.finding_id,
-            evidence_type: r.evidence_type,
-            source_file: r.source_file,
-            start_line: r.start_line,
-            end_line: r.end_line,
-            content_excerpt: r.content_excerpt,
-            test_id: r.test_id,
-            description: r.description,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Evidence {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                finding_id: r.finding_id,
+                evidence_type: r.evidence_type,
+                source_file: r.source_file,
+                start_line: r.start_line,
+                end_line: r.end_line,
+                content_excerpt: r.content_excerpt,
+                test_id: r.test_id,
+                description: r.description,
+            })
+            .collect())
     }
 
-    pub async fn delete_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<()> {
-        sqlx::query!("DELETE FROM evidence WHERE investigation_id = ?", investigation_id)
-            .execute(db).await?;
+    pub async fn delete_for_investigation(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<()> {
+        sqlx::query!(
+            "DELETE FROM evidence WHERE investigation_id = ?",
+            investigation_id
+        )
+        .execute(db)
+        .await?;
         Ok(())
     }
 }

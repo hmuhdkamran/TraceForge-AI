@@ -1,18 +1,15 @@
 use axum::{
     extract::{Path, Query, State},
-    Json,
     http::StatusCode,
+    Json,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::models::investigation::CreateInvestigationRequest;
-use crate::repositories::{InvestigationRepo, AuditRepo};
-use crate::services::{
-    investigation::InvestigationService,
-    prompts::PromptService,
-};
+use crate::repositories::{AuditRepo, InvestigationRepo};
+use crate::services::{investigation::InvestigationService, prompts::PromptService};
 use crate::state::SharedState;
 
 #[derive(Deserialize)]
@@ -31,7 +28,10 @@ pub async fn create_investigation(
 
     let investigation = InvestigationService::create(&state.db, &state.config, req).await?;
 
-    Ok((StatusCode::CREATED, Json(json!({ "investigation": investigation }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "investigation": investigation })),
+    ))
 }
 
 pub async fn list_investigations(
@@ -97,26 +97,69 @@ pub async fn run_baseline(
     // Run in background
     tokio::spawn(async move {
         match crate::services::verification::VerificationService::run_baseline(
-            &db, &config, &investigation, "baseline"
-        ).await {
+            &db,
+            &config,
+            &investigation,
+            "baseline",
+        )
+        .await
+        {
             Ok(result) => {
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
-                let _ = AuditRepo::record(&db, Some(&inv_id), "status.baseline_captured", "system", None, json!({ "summary": result.summary })).await;
-                let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
-                let _ = AuditRepo::record(&db, Some(&inv_id), "status.awaiting_bob_investigation", "system", None, json!({})).await;
+                let _ = AuditRepo::record(
+                    &db,
+                    Some(&inv_id),
+                    "status.baseline_captured",
+                    "system",
+                    None,
+                    json!({ "summary": result.summary }),
+                )
+                .await;
+                let _ =
+                    InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION")
+                        .await;
+                let _ = AuditRepo::record(
+                    &db,
+                    Some(&inv_id),
+                    "status.awaiting_bob_investigation",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await;
                 tracing::info!("Baseline complete: {}", result.summary);
             }
             Err(e) => {
                 tracing::error!("Baseline failed: {}", e);
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
-                let _ = AuditRepo::record(&db, Some(&inv_id), "status.baseline_captured", "system", None, json!({ "error": e.to_string() })).await;
-                let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
-                let _ = AuditRepo::record(&db, Some(&inv_id), "status.awaiting_bob_investigation", "system", None, json!({})).await;
+                let _ = AuditRepo::record(
+                    &db,
+                    Some(&inv_id),
+                    "status.baseline_captured",
+                    "system",
+                    None,
+                    json!({ "error": e.to_string() }),
+                )
+                .await;
+                let _ =
+                    InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION")
+                        .await;
+                let _ = AuditRepo::record(
+                    &db,
+                    Some(&inv_id),
+                    "status.awaiting_bob_investigation",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await;
             }
         }
     });
 
-    Ok(Json(json!({ "status": "baseline started", "investigation_id": id })))
+    Ok(Json(
+        json!({ "status": "baseline started", "investigation_id": id }),
+    ))
 }
 
 pub async fn get_baseline(
@@ -129,9 +172,8 @@ pub async fn get_baseline(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let executions = TestExecutionRepo::list_for_investigation(
-        &state.db, &id, Some("baseline")
-    ).await?;
+    let executions =
+        TestExecutionRepo::list_for_investigation(&state.db, &id, Some("baseline")).await?;
 
     Ok(Json(json!({ "baseline_executions": executions })))
 }
@@ -145,7 +187,12 @@ pub async fn get_bob_investigation_prompt(
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
     let prompt = PromptService::generate_investigation_prompt(&investigation, &state.config);
-    let workspace_path = state.config.workspace_root.join(&investigation.workspace_id).display().to_string();
+    let workspace_path = state
+        .config
+        .workspace_root
+        .join(&investigation.workspace_id)
+        .display()
+        .to_string();
 
     Ok(Json(json!({
         "prompt": prompt,
@@ -179,7 +226,9 @@ pub async fn get_bob_implementation_prompt(
         &state.config,
         &investigation.workspace_id,
         "bob_artifacts/fix_plan.md",
-    ).await.unwrap_or_else(|_| "Fix plan not yet available.".into());
+    )
+    .await
+    .unwrap_or_else(|_| "Fix plan not yet available.".into());
 
     let prompt = PromptService::generate_implementation_prompt(
         &investigation,

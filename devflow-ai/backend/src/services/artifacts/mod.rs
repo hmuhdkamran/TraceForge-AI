@@ -1,10 +1,10 @@
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
-use serde::{Deserialize, Serialize};
 
 use crate::config::Config;
-use crate::errors::{AppError, ApiResult};
-use crate::repositories::{InvestigationRepo, FindingRepo, EvidenceRepo, AuditRepo};
+use crate::errors::{ApiResult, AppError};
+use crate::repositories::{AuditRepo, EvidenceRepo, FindingRepo, InvestigationRepo};
 use crate::security::path_guard::PathGuard;
 use crate::services::workspace::WorkspaceService;
 
@@ -94,13 +94,23 @@ impl ArtifactService {
         };
 
         // Check for diagnosis.json
-        let diagnosis_path = format!("bob_artifacts/diagnosis.json");
+        let diagnosis_path = "bob_artifacts/diagnosis.json".to_string();
         match WorkspaceService::read_artifact(config, workspace_id, &diagnosis_path).await {
             Ok(content) => {
                 if content.len() > MAX_ARTIFACT_SIZE {
-                    result.errors.push("diagnosis.json exceeds size limit".into());
+                    result
+                        .errors
+                        .push("diagnosis.json exceeds size limit".into());
                 } else {
-                    match Self::import_diagnosis(db, config, investigation_id, workspace_id, &content).await {
+                    match Self::import_diagnosis(
+                        db,
+                        config,
+                        investigation_id,
+                        workspace_id,
+                        &content,
+                    )
+                    .await
+                    {
                         Ok(count) => {
                             result.artifacts_imported += 1;
                             result.findings_created += count;
@@ -115,7 +125,9 @@ impl ArtifactService {
                 // Not yet present — not an error
             }
             Err(e) => {
-                result.errors.push(format!("Failed to read diagnosis.json: {}", e));
+                result
+                    .errors
+                    .push(format!("Failed to read diagnosis.json: {}", e));
             }
         }
 
@@ -141,19 +153,25 @@ impl ArtifactService {
                         rel_path,
                         &sha,
                         "valid",
-                    ).await {
+                    )
+                    .await
+                    {
                         Ok(_) => result.artifacts_imported += 1,
                         Err(e) => result.errors.push(format!("{}: {}", rel_path, e)),
                     }
                 }
                 Err(AppError::NotFound(_)) => {}
-                Err(e) => result.errors.push(format!("Failed to read {}: {}", rel_path, e)),
+                Err(e) => result
+                    .errors
+                    .push(format!("Failed to read {}: {}", rel_path, e)),
             }
         }
 
         // Check for changed_files.json
         let changed_files_path = "bob_artifacts/changed_files.json";
-        if let Ok(content) = WorkspaceService::read_artifact(config, workspace_id, changed_files_path).await {
+        if let Ok(content) =
+            WorkspaceService::read_artifact(config, workspace_id, changed_files_path).await
+        {
             let sha = Self::sha256(&content);
             let _ = InvestigationRepo::upsert_artifact(
                 db,
@@ -162,7 +180,8 @@ impl ArtifactService {
                 changed_files_path,
                 &sha,
                 "valid",
-            ).await;
+            )
+            .await;
             result.artifacts_imported += 1;
         }
 
@@ -177,7 +196,8 @@ impl ArtifactService {
                 "findings": result.findings_created,
                 "errors": result.errors.len()
             }),
-        ).await?;
+        )
+        .await?;
 
         Ok(result)
     }
@@ -189,15 +209,20 @@ impl ArtifactService {
         workspace_id: &str,
         content: &str,
     ) -> ApiResult<usize> {
-        let diagnosis: DiagnosisArtifact = serde_json::from_str(content)
-            .map_err(|e| AppError::ArtifactValidation(format!("diagnosis.json parse error: {}", e)))?;
+        let diagnosis: DiagnosisArtifact = serde_json::from_str(content).map_err(|e| {
+            AppError::ArtifactValidation(format!("diagnosis.json parse error: {}", e))
+        })?;
 
         if diagnosis.schema_version < 1 {
-            return Err(AppError::ArtifactValidation("schema_version must be >= 1".into()));
+            return Err(AppError::ArtifactValidation(
+                "schema_version must be >= 1".into(),
+            ));
         }
 
         if diagnosis.investigation_id.is_empty() {
-            return Err(AppError::ArtifactValidation("investigation_id is required".into()));
+            return Err(AppError::ArtifactValidation(
+                "investigation_id is required".into(),
+            ));
         }
 
         if diagnosis.investigation_id != investigation_id {
@@ -208,18 +233,24 @@ impl ArtifactService {
         }
 
         // Validate finding IDs are unique
-        let ids: std::collections::HashSet<&str> = diagnosis.findings.iter().map(|f| f.id.as_str()).collect();
+        let ids: std::collections::HashSet<&str> =
+            diagnosis.findings.iter().map(|f| f.id.as_str()).collect();
         if ids.len() != diagnosis.findings.len() {
-            return Err(AppError::ArtifactValidation("Duplicate finding IDs in diagnosis.json".into()));
+            return Err(AppError::ArtifactValidation(
+                "Duplicate finding IDs in diagnosis.json".into(),
+            ));
         }
 
         // Validate paths and line ranges in source_references
         for f in &diagnosis.findings {
             if let Some(refs) = &f.source_references {
                 for r in refs {
-                    if PathGuard::validate_workspace_path(config, workspace_id, &r.relative_path).is_err() {
+                    if PathGuard::validate_workspace_path(config, workspace_id, &r.relative_path)
+                        .is_err()
+                    {
                         return Err(AppError::ArtifactValidation(format!(
-                            "Path traversal rejected in source_reference: {}", r.relative_path
+                            "Path traversal rejected in source_reference: {}",
+                            r.relative_path
                         )));
                     }
                     if let (Some(s), Some(e)) = (r.start_line, r.end_line) {
@@ -239,14 +270,16 @@ impl ArtifactService {
             if let Some(ref path) = e.source_file {
                 if PathGuard::validate_workspace_path(config, workspace_id, path).is_err() {
                     return Err(AppError::ArtifactValidation(format!(
-                        "Path traversal rejected in evidence source_file: {}", path
+                        "Path traversal rejected in evidence source_file: {}",
+                        path
                     )));
                 }
             }
             if let (Some(s), Some(e)) = (e.start_line, e.end_line) {
                 if s < 1 || e < s {
                     return Err(AppError::ArtifactValidation(format!(
-                        "Invalid line range in evidence: {}-{}", s, e
+                        "Invalid line range in evidence: {}-{}",
+                        s, e
                     )));
                 }
             }
@@ -262,13 +295,15 @@ impl ArtifactService {
             "bob_artifacts/diagnosis.json",
             &sha,
             "valid",
-        ).await?;
+        )
+        .await?;
 
         // Delete existing findings and evidence to allow idempotent re-import
         EvidenceRepo::delete_for_investigation(db, investigation_id).await?;
         FindingRepo::delete_for_investigation(db, investigation_id).await?;
 
-        let mut finding_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut finding_map: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
         let mut count = 0;
 
         for f in &diagnosis.findings {
@@ -281,7 +316,8 @@ impl ArtifactService {
                 f.expected_behavior.as_deref().unwrap_or(""),
                 f.observed_behavior.as_deref().unwrap_or(""),
                 f.confidence.as_deref().unwrap_or("medium"),
-            ).await?;
+            )
+            .await?;
 
             finding_map.insert(f.id.clone(), finding.id.clone());
             count += 1;
@@ -289,7 +325,13 @@ impl ArtifactService {
             // Import source references as evidence with excerpt extraction
             if let Some(refs) = &f.source_references {
                 for r in refs {
-                    let excerpt = Self::extract_excerpt(config, workspace_id, &r.relative_path, r.start_line, r.end_line);
+                    let excerpt = Self::extract_excerpt(
+                        config,
+                        workspace_id,
+                        &r.relative_path,
+                        r.start_line,
+                        r.end_line,
+                    );
 
                     EvidenceRepo::create(
                         db,
@@ -302,7 +344,8 @@ impl ArtifactService {
                         excerpt.as_deref(),
                         None,
                         r.description.as_deref().unwrap_or("Source reference"),
-                    ).await?;
+                    )
+                    .await?;
                 }
             }
         }
@@ -329,7 +372,8 @@ impl ArtifactService {
                     excerpt.as_deref(),
                     e.test_id.as_deref(),
                     &e.description,
-                ).await?;
+                )
+                .await?;
             }
         }
 
@@ -343,10 +387,11 @@ impl ArtifactService {
         start_line: Option<i64>,
         end_line: Option<i64>,
     ) -> Option<String> {
-        let full_path = match PathGuard::validate_workspace_path(config, workspace_id, relative_path) {
-            Ok(p) => p,
-            Err(_) => return None,
-        };
+        let full_path =
+            match PathGuard::validate_workspace_path(config, workspace_id, relative_path) {
+                Ok(p) => p,
+                Err(_) => return None,
+            };
 
         if full_path.exists() && full_path.is_file() {
             if let Ok(file_str) = std::fs::read_to_string(&full_path) {

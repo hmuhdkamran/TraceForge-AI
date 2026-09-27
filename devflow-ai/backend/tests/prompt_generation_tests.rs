@@ -1,7 +1,7 @@
-use std::path::PathBuf;
 use contractguard_lib::config::Config;
 use contractguard_lib::models::investigation::Investigation;
 use contractguard_lib::services::prompts::PromptService;
+use std::path::PathBuf;
 
 fn sample_config() -> Config {
     Config {
@@ -14,6 +14,7 @@ fn sample_config() -> Config {
         max_body_bytes: 1024 * 1024,
         test_timeout_secs: 60,
         max_output_bytes: 1024 * 1024,
+        static_dir: None,
     }
 }
 

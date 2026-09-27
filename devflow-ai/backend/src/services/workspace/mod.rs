@@ -2,14 +2,18 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 
 use crate::config::Config;
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::security::path_guard::PathGuard;
 
 pub struct WorkspaceService;
 
 impl WorkspaceService {
     /// Creates an isolated workspace for an investigation by copying the broken sample.
-    pub async fn create_workspace(config: &Config, investigation_id: &str, workspace_id: &str) -> ApiResult<PathBuf> {
+    pub async fn create_workspace(
+        config: &Config,
+        investigation_id: &str,
+        workspace_id: &str,
+    ) -> ApiResult<PathBuf> {
         let workspace_path = config.workspace_root.join(workspace_id);
 
         if workspace_path.exists() {
@@ -36,7 +40,8 @@ impl WorkspaceService {
         fs::write(
             workspace_path.join("workspace.json"),
             serde_json::to_string_pretty(&meta).unwrap_or_default(),
-        ).await?;
+        )
+        .await?;
 
         Ok(workspace_path)
     }
@@ -46,20 +51,36 @@ impl WorkspaceService {
     }
 
     /// Validate that a path is within the workspace root (no path traversal).
-    pub fn validate_path(config: &Config, workspace_id: &str, relative: &str) -> ApiResult<PathBuf> {
+    pub fn validate_path(
+        config: &Config,
+        workspace_id: &str,
+        relative: &str,
+    ) -> ApiResult<PathBuf> {
         PathGuard::validate_workspace_path(config, workspace_id, relative)
     }
 
-    pub async fn read_artifact(config: &Config, workspace_id: &str, relative: &str) -> ApiResult<String> {
+    pub async fn read_artifact(
+        config: &Config,
+        workspace_id: &str,
+        relative: &str,
+    ) -> ApiResult<String> {
         let path = Self::validate_path(config, workspace_id, relative)?;
         if !path.exists() {
-            return Err(AppError::NotFound(format!("Artifact not found: {}", relative)));
+            return Err(AppError::NotFound(format!(
+                "Artifact not found: {}",
+                relative
+            )));
         }
         let content = fs::read_to_string(&path).await?;
         Ok(content)
     }
 
-    pub async fn write_artifact(config: &Config, workspace_id: &str, relative: &str, content: &str) -> ApiResult<()> {
+    pub async fn write_artifact(
+        config: &Config,
+        workspace_id: &str,
+        relative: &str,
+        content: &str,
+    ) -> ApiResult<()> {
         let path = Self::validate_path(config, workspace_id, relative)?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;

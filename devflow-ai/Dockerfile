@@ -57,6 +57,7 @@ ENV DATABASE_URL=sqlite:///app/data/contractguard.db
 ENV BIND_ADDR=0.0.0.0:8080
 ENV WORKSPACE_ROOT=/app/runs
 ENV SAMPLE_PROJECT_ROOT=/app/sample_project
+ENV STATIC_DIR=/app/static
 ENV ALLOWED_ORIGINS=*
 
 EXPOSE 8080

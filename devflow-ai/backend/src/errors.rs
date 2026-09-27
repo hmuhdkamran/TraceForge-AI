@@ -48,23 +48,55 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
-            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, sanitize_error_message(msg)),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, sanitize_error_message(msg)),
             AppError::InvalidTransition(msg) => (StatusCode::CONFLICT, msg.clone()),
-            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string()),
+            AppError::Database(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error".to_string(),
+            ),
             AppError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IO error".to_string()),
-            AppError::Workspace(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
-            AppError::ArtifactValidation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
-            AppError::DemoModeMutation => (StatusCode::FORBIDDEN, "Mutation not allowed in demo mode".to_string()),
-            AppError::ApprovalRequired => (StatusCode::PRECONDITION_REQUIRED, "Approval required".to_string()),
-            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
-            AppError::Serialization(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Serialization error".to_string()),
-            AppError::PathTraversal => (StatusCode::BAD_REQUEST, "Path traversal detected".to_string()),
+            AppError::Workspace(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Workspace error".to_string(),
+            ),
+            AppError::ArtifactValidation(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                sanitize_error_message(msg),
+            ),
+            AppError::DemoModeMutation => (
+                StatusCode::FORBIDDEN,
+                "Mutation not allowed in demo mode".to_string(),
+            ),
+            AppError::ApprovalRequired => (
+                StatusCode::PRECONDITION_REQUIRED,
+                "Approval required".to_string(),
+            ),
+            AppError::Internal(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ),
+            AppError::Serialization(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Serialization error".to_string(),
+            ),
+            AppError::PathTraversal => (
+                StatusCode::BAD_REQUEST,
+                "Path traversal detected".to_string(),
+            ),
         };
 
         tracing::error!("API error: {:?}", self);
 
         (status, Json(json!({ "error": message }))).into_response()
+    }
+}
+
+fn sanitize_error_message(msg: &str) -> String {
+    if msg.contains(":\\") || msg.contains(":/") || msg.starts_with('/') {
+        "Invalid resource or path specified".to_string()
+    } else {
+        msg.to_string()
     }
 }
 

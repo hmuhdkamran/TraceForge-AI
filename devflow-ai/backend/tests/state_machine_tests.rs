@@ -75,11 +75,17 @@ fn test_status_as_str() {
     assert_eq!(WorkspaceReady.as_str(), "WORKSPACE_READY");
     assert_eq!(BaselineRunning.as_str(), "BASELINE_RUNNING");
     assert_eq!(BaselineCaptured.as_str(), "BASELINE_CAPTURED");
-    assert_eq!(AwaitingBobInvestigation.as_str(), "AWAITING_BOB_INVESTIGATION");
+    assert_eq!(
+        AwaitingBobInvestigation.as_str(),
+        "AWAITING_BOB_INVESTIGATION"
+    );
     assert_eq!(InvestigationImported.as_str(), "INVESTIGATION_IMPORTED");
     assert_eq!(AwaitingApproval.as_str(), "AWAITING_APPROVAL");
     assert_eq!(Approved.as_str(), "APPROVED");
-    assert_eq!(ImplementationInProgress.as_str(), "IMPLEMENTATION_IN_PROGRESS");
+    assert_eq!(
+        ImplementationInProgress.as_str(),
+        "IMPLEMENTATION_IN_PROGRESS"
+    );
     assert_eq!(ReadyForVerification.as_str(), "READY_FOR_VERIFICATION");
     assert_eq!(VerificationRunning.as_str(), "VERIFICATION_RUNNING");
     assert_eq!(Verified.as_str(), "VERIFIED");

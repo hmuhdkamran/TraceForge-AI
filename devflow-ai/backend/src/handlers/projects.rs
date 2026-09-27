@@ -4,7 +4,9 @@ use serde_json::json;
 use crate::errors::ApiResult;
 use crate::state::SharedState;
 
-pub async fn list_projects(State(_state): State<SharedState>) -> ApiResult<Json<serde_json::Value>> {
+pub async fn list_projects(
+    State(_state): State<SharedState>,
+) -> ApiResult<Json<serde_json::Value>> {
     // For MVP: return the single bundled UploadLab project
     Ok(Json(json!({
         "projects": [
@@ -23,7 +25,10 @@ pub async fn get_project(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     if id != "uploadlab" {
-        return Err(crate::errors::AppError::NotFound(format!("Project {} not found", id)));
+        return Err(crate::errors::AppError::NotFound(format!(
+            "Project {} not found",
+            id
+        )));
     }
     Ok(Json(json!({
         "project": {
@@ -40,7 +45,10 @@ pub async fn list_scenarios(
     axum::extract::Path(project_id): axum::extract::Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     if project_id != "uploadlab" {
-        return Err(crate::errors::AppError::NotFound(format!("Project {} not found", project_id)));
+        return Err(crate::errors::AppError::NotFound(format!(
+            "Project {} not found",
+            project_id
+        )));
     }
     Ok(Json(json!({
         "scenarios": [

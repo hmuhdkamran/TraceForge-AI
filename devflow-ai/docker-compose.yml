@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Primary ContractGuard application (Full interactive mode)
+  contractguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contractguard
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=sqlite:///app/data/contractguard.db
+      - BIND_ADDR=0.0.0.0:8080
+      - WORKSPACE_ROOT=/app/runs
+      - SAMPLE_PROJECT_ROOT=/app/sample_project
+      - STATIC_DIR=/app/static
+      - DEMO_MODE=false
+      - ALLOWED_ORIGINS=*
+      - RUST_LOG=contractguard=info,tower_http=info
+    volumes:
+      - contractguard_data:/app/data
+      - contractguard_runs:/app/runs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Public Read-Only Demonstration Mode (Mutations blocked per Part 16/20)
+  contractguard-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contractguard-demo
+    ports:
+      - "8081:8080"
+    environment:
+      - DATABASE_URL=sqlite:///app/data/contractguard.db
+      - BIND_ADDR=0.0.0.0:8080
+      - WORKSPACE_ROOT=/app/runs
+      - SAMPLE_PROJECT_ROOT=/app/sample_project
+      - STATIC_DIR=/app/static
+      - DEMO_MODE=true
+      - ALLOWED_ORIGINS=*
+      - RUST_LOG=contractguard=info,tower_http=info
+    volumes:
+      - contractguard_data:/app/data:ro
+      - contractguard_runs:/app/runs:ro
+    restart: unless-stopped
+    profiles:
+      - demo
+
+volumes:
+  contractguard_data:
+    driver: local
+  contractguard_runs:
+    driver: local

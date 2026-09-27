@@ -5,7 +5,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::repositories::InvestigationRepo;
 use crate::services::reporting::ReportingService;
 use crate::state::SharedState;

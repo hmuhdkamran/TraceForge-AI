@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 
 use crate::config::Config;
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 
 pub struct PathGuard;
 
 impl PathGuard {
     /// Ensure relative path stays within workspace root; reject traversal and symlinks.
-    pub fn validate_workspace_path(config: &Config, workspace_id: &str, relative: &str) -> ApiResult<PathBuf> {
+    pub fn validate_workspace_path(
+        config: &Config,
+        workspace_id: &str,
+        relative: &str,
+    ) -> ApiResult<PathBuf> {
         // Reject obvious traversal patterns before canonicalization
         if relative.contains("..") {
             return Err(AppError::PathTraversal);
@@ -60,13 +64,15 @@ mod tests {
             max_body_bytes: 1024 * 1024,
             test_timeout_secs: 60,
             max_output_bytes: 1024 * 1024,
+            static_dir: None,
         }
     }
 
     #[test]
     fn accepts_valid_path() {
         let config = make_config("/tmp/runs");
-        let result = PathGuard::validate_workspace_path(&config, "ws1", "bob_artifacts/diagnosis.json");
+        let result =
+            PathGuard::validate_workspace_path(&config, "ws1", "bob_artifacts/diagnosis.json");
         assert!(result.is_ok());
     }
 

@@ -50,23 +50,33 @@ impl FindingRepo {
             "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE investigation_id = ? ORDER BY created_at ASC",
             investigation_id
         ).fetch_all(db).await?;
-        Ok(rows.into_iter().map(|r| Finding {
-            id: r.id.unwrap_or_default(),
-            investigation_id: r.investigation_id,
-            finding_type: r.finding_type,
-            title: r.title,
-            description: r.description,
-            expected_behavior: r.expected_behavior,
-            observed_behavior: r.observed_behavior,
-            confidence: r.confidence,
-            verification_status: r.verification_status,
-            created_at: r.created_at,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Finding {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                finding_type: r.finding_type,
+                title: r.title,
+                description: r.description,
+                expected_behavior: r.expected_behavior,
+                observed_behavior: r.observed_behavior,
+                confidence: r.confidence,
+                verification_status: r.verification_status,
+                created_at: r.created_at,
+            })
+            .collect())
     }
 
-    pub async fn delete_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<()> {
-        sqlx::query!("DELETE FROM findings WHERE investigation_id = ?", investigation_id)
-            .execute(db).await?;
+    pub async fn delete_for_investigation(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<()> {
+        sqlx::query!(
+            "DELETE FROM findings WHERE investigation_id = ?",
+            investigation_id
+        )
+        .execute(db)
+        .await?;
         Ok(())
     }
 }

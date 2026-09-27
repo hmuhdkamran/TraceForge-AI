@@ -11,6 +11,7 @@ pub struct Config {
     pub max_body_bytes: usize,
     pub test_timeout_secs: u64,
     pub max_output_bytes: usize,
+    pub static_dir: Option<PathBuf>,
 }
 
 impl Config {
@@ -18,8 +19,7 @@ impl Config {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "sqlite://contractguard.db".to_string());
 
-        let bind_addr = std::env::var("BIND_ADDR")
-            .unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+        let bind_addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
 
         let workspace_root = std::env::var("WORKSPACE_ROOT")
             .map(PathBuf::from)
@@ -70,6 +70,20 @@ impl Config {
             .and_then(|v| v.parse().ok())
             .unwrap_or(1024 * 1024); // 1 MB
 
+        let static_dir = std::env::var("STATIC_DIR")
+            .map(PathBuf::from)
+            .ok()
+            .or_else(|| {
+                let candidates = [
+                    PathBuf::from("frontend/dist"),
+                    PathBuf::from("../frontend/dist"),
+                    PathBuf::from("dist"),
+                ];
+                candidates
+                    .into_iter()
+                    .find(|p| p.exists() && p.join("index.html").exists())
+            });
+
         Ok(Config {
             database_url,
             bind_addr,
@@ -80,6 +94,7 @@ impl Config {
             max_body_bytes,
             test_timeout_secs,
             max_output_bytes,
+            static_dir,
         })
     }
 }

@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use serde::{Serialize, Deserialize};
 
 use crate::config::Config;
 use crate::errors::ApiResult;
@@ -42,31 +42,35 @@ impl MetricsService {
         investigation: &Investigation,
     ) -> ApiResult<InvestigationMetrics> {
         let findings = FindingRepo::list(db, &investigation.id).await?;
-        let root_causes = findings.iter()
-            .filter(|f| f.finding_type == "root_cause" || f.title.to_lowercase().contains("root cause"))
+        let root_causes = findings
+            .iter()
+            .filter(|f| {
+                f.finding_type == "root_cause" || f.title.to_lowercase().contains("root cause")
+            })
             .count() as i64;
 
-        let baseline_execs = TestExecutionRepo::list_for_investigation(
-            db,
-            &investigation.id,
-            Some("baseline"),
-        ).await?;
+        let baseline_execs =
+            TestExecutionRepo::list_for_investigation(db, &investigation.id, Some("baseline"))
+                .await?;
 
-        let verification_execs = TestExecutionRepo::list_for_investigation(
-            db,
-            &investigation.id,
-            Some("verification"),
-        ).await?;
+        let verification_execs =
+            TestExecutionRepo::list_for_investigation(db, &investigation.id, Some("verification"))
+                .await?;
 
         let baseline_duration = baseline_execs.first().and_then(|e| e.duration_ms);
         let verification_duration = verification_execs.first().and_then(|e| e.duration_ms);
 
         // Parse baseline failed tests count from execution summary or exit code
-        let baseline_tests_failed = baseline_execs.first()
+        let baseline_tests_failed = baseline_execs
+            .first()
             .map(|e| {
                 if let Some(ref s) = e.summary {
                     if let Some(pos) = s.find("failed") {
-                        s[..pos].split_whitespace().last().and_then(|c| c.parse::<i64>().ok()).unwrap_or(0)
+                        s[..pos]
+                            .split_whitespace()
+                            .last()
+                            .and_then(|c| c.parse::<i64>().ok())
+                            .unwrap_or(0)
                     } else if e.exit_code.unwrap_or(0) != 0 {
                         3
                     } else {
@@ -81,11 +85,16 @@ impl MetricsService {
             .unwrap_or(0);
 
         // Parse verification passing tests count
-        let verification_tests_passed = verification_execs.first()
+        let verification_tests_passed = verification_execs
+            .first()
             .map(|e| {
                 if let Some(ref s) = e.summary {
                     if let Some(pos) = s.find("passed") {
-                        s[..pos].split_whitespace().last().and_then(|c| c.parse::<i64>().ok()).unwrap_or(0)
+                        s[..pos]
+                            .split_whitespace()
+                            .last()
+                            .and_then(|c| c.parse::<i64>().ok())
+                            .unwrap_or(0)
                     } else if e.exit_code.unwrap_or(-1) == 0 {
                         11
                     } else {
@@ -104,10 +113,15 @@ impl MetricsService {
             config,
             &investigation.workspace_id,
             "bob_artifacts/changed_files.json",
-        ).await {
+        )
+        .await
+        {
             Ok(content) => {
                 let v: serde_json::Value = serde_json::from_str(&content).unwrap_or_default();
-                v.get("files").and_then(|f| f.as_array()).map(|a| a.len() as i64).unwrap_or(0)
+                v.get("files")
+                    .and_then(|f| f.as_array())
+                    .map(|a| a.len() as i64)
+                    .unwrap_or(0)
             }
             Err(_) => 0,
         };
@@ -138,10 +152,19 @@ impl MetricsService {
 
         let manual_comparison = manual_row.map(|m| {
             use sqlx::Row;
-            let manual_mins = m.try_get::<Option<i64>, _>("active_minutes").ok().flatten().unwrap_or(45);
-            let scenario_id: String = m.try_get("scenario_id").unwrap_or_else(|_| investigation.scenario_id.clone());
+            let manual_mins = m
+                .try_get::<Option<i64>, _>("active_minutes")
+                .ok()
+                .flatten()
+                .unwrap_or(45);
+            let scenario_id: String = m
+                .try_get("scenario_id")
+                .unwrap_or_else(|_| investigation.scenario_id.clone());
             // Bob active minutes (estimated from tool duration + approval interaction)
-            let bob_mins = ((total_duration.unwrap_or(300_000) as f64 / 60_000.0).max(1.0).round() as i64).min(manual_mins);
+            let bob_mins = ((total_duration.unwrap_or(300_000) as f64 / 60_000.0)
+                .max(1.0)
+                .round() as i64)
+                .min(manual_mins);
             let time_saved_mins = (manual_mins - bob_mins).max(0);
             let reduction_pct = if manual_mins > 0 {
                 ((time_saved_mins as f64 / manual_mins as f64) * 100.0).round() as i64

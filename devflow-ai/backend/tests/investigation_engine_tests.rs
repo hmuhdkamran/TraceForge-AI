@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-use sqlx::sqlite::SqlitePoolOptions;
 use contractguard_lib::config::Config;
 use contractguard_lib::models::investigation::CreateInvestigationRequest;
+use contractguard_lib::repositories::{AuditRepo, InvestigationRepo};
 use contractguard_lib::services::investigation::InvestigationService;
-use contractguard_lib::repositories::{InvestigationRepo, AuditRepo};
+use sqlx::sqlite::SqlitePoolOptions;
+use std::path::PathBuf;
 
 async fn setup_test_db() -> sqlx::SqlitePool {
     let pool = SqlitePoolOptions::new()
@@ -43,6 +43,7 @@ fn test_config(test_name: &str) -> (Config, PathBuf) {
         max_body_bytes: 1024 * 1024,
         test_timeout_secs: 60,
         max_output_bytes: 1024 * 1024,
+        static_dir: None,
     };
 
     (config, test_dir)
@@ -75,16 +76,29 @@ async fn test_investigation_creation_and_workspace_isolation() {
     // 2. Assert Workspace Isolation
     let ws_dir = test_dir.join(&investigation.workspace_id);
     assert!(ws_dir.exists(), "Workspace dir should exist");
-    assert!(ws_dir.join("workspace.json").exists(), "workspace.json metadata should exist");
-    assert!(ws_dir.join("broken").exists(), "broken fixture should be copied");
-    assert!(ws_dir.join("bob_artifacts").exists(), "bob_artifacts dir should exist");
+    assert!(
+        ws_dir.join("workspace.json").exists(),
+        "workspace.json metadata should exist"
+    );
+    assert!(
+        ws_dir.join("broken").exists(),
+        "broken fixture should be copied"
+    );
+    assert!(
+        ws_dir.join("bob_artifacts").exists(),
+        "bob_artifacts dir should exist"
+    );
 
     // 3. Assert Audit Log Events
     let audit_events = AuditRepo::list_for_investigation(&db, &investigation.id)
         .await
         .expect("Failed to fetch audit events");
-    assert!(audit_events.iter().any(|e| e.event_type == "investigation.created"));
-    assert!(audit_events.iter().any(|e| e.event_type == "workspace.created"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "investigation.created"));
+    assert!(audit_events
+        .iter()
+        .any(|e| e.event_type == "workspace.created"));
 
     // 4. Assert State Machine Transitions
     InvestigationService::transition_status(&db, &investigation, "BASELINE_RUNNING")

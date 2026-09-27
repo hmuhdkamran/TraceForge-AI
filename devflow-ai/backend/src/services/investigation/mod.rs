@@ -1,11 +1,13 @@
-use sqlx::SqlitePool;
 use serde_json::json;
+use sqlx::SqlitePool;
 
-use crate::errors::{AppError, ApiResult};
-use crate::models::investigation::{Investigation, CreateInvestigationRequest, InvestigationStatus};
-use crate::repositories::{InvestigationRepo, AuditRepo};
-use crate::services::workspace::WorkspaceService;
 use crate::config::Config;
+use crate::errors::{ApiResult, AppError};
+use crate::models::investigation::{
+    CreateInvestigationRequest, Investigation, InvestigationStatus,
+};
+use crate::repositories::{AuditRepo, InvestigationRepo};
+use crate::services::workspace::WorkspaceService;
 
 pub struct InvestigationService;
 
@@ -28,7 +30,8 @@ impl InvestigationService {
             &req.description,
             &req.project_id,
             &req.scenario_id,
-        ).await?;
+        )
+        .await?;
 
         AuditRepo::record(
             db,
@@ -41,17 +44,37 @@ impl InvestigationService {
                 "project_id": req.project_id,
                 "scenario_id": req.scenario_id
             }),
-        ).await?;
+        )
+        .await?;
 
         // Create workspace
-        match WorkspaceService::create_workspace(config, &investigation.id, &investigation.workspace_id).await {
+        match WorkspaceService::create_workspace(
+            config,
+            &investigation.id,
+            &investigation.workspace_id,
+        )
+        .await
+        {
             Ok(_) => {
                 InvestigationRepo::update_status(db, &investigation.id, "WORKSPACE_READY").await?;
-                AuditRepo::record(db, Some(&investigation.id), "workspace.created", "system", None, json!({})).await?;
+                AuditRepo::record(
+                    db,
+                    Some(&investigation.id),
+                    "workspace.created",
+                    "system",
+                    None,
+                    json!({}),
+                )
+                .await?;
             }
             Err(e) => {
                 tracing::error!("Failed to create workspace: {}", e);
-                InvestigationRepo::set_failure(db, &investigation.id, &format!("Workspace creation failed: {}", e)).await?;
+                InvestigationRepo::set_failure(
+                    db,
+                    &investigation.id,
+                    &format!("Workspace creation failed: {}", e),
+                )
+                .await?;
             }
         }
 

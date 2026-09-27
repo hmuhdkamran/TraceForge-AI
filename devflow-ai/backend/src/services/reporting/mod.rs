@@ -1,11 +1,13 @@
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use serde::{Serialize, Deserialize};
 
 use crate::config::Config;
 use crate::errors::ApiResult;
 use crate::models::investigation::Investigation;
-use crate::repositories::{FindingRepo, EvidenceRepo, TestExecutionRepo, AuditRepo, InvestigationRepo};
-use crate::services::metrics::{MetricsService, InvestigationMetrics};
+use crate::repositories::{
+    AuditRepo, EvidenceRepo, FindingRepo, InvestigationRepo, TestExecutionRepo,
+};
+use crate::services::metrics::{InvestigationMetrics, MetricsService};
 use crate::services::workspace::WorkspaceService;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -139,7 +141,8 @@ impl ReportingService {
         let audit_models = AuditRepo::list_for_investigation(db, &investigation.id).await?;
 
         let baseline = TestExecutionRepo::get_latest(db, &investigation.id, "baseline").await?;
-        let verification = TestExecutionRepo::get_latest(db, &investigation.id, "verification").await?;
+        let verification =
+            TestExecutionRepo::get_latest(db, &investigation.id, "verification").await?;
         let approval = InvestigationRepo::get_approval(db, &investigation.id).await?;
 
         // 1. Investigation summary
@@ -173,13 +176,22 @@ impl ReportingService {
         // 5. Baseline reproduction results
         let baseline_reproduction = BaselineReproductionSection {
             execution_id: baseline.as_ref().map(|b| b.id.clone()),
-            status: baseline.as_ref().map(|b| b.status.clone()).unwrap_or_else(|| "not_run".to_string()),
-            exit_code: baseline.as_ref().and_then(|b| b.exit_code).map(|c| c as i32),
+            status: baseline
+                .as_ref()
+                .map(|b| b.status.clone())
+                .unwrap_or_else(|| "not_run".to_string()),
+            exit_code: baseline
+                .as_ref()
+                .and_then(|b| b.exit_code)
+                .map(|c| c as i32),
             duration_ms: baseline.as_ref().and_then(|b| b.duration_ms),
             summary: baseline.as_ref().and_then(|b| b.summary.clone()),
             stdout: baseline.as_ref().and_then(|b| b.stdout_path.clone()),
             stderr: baseline.as_ref().and_then(|b| b.stderr_path.clone()),
-            reproduced: baseline.as_ref().map(|b| b.exit_code.unwrap_or(0) != 0).unwrap_or(false),
+            reproduced: baseline
+                .as_ref()
+                .map(|b| b.exit_code.unwrap_or(0) != 0)
+                .unwrap_or(false),
         };
 
         // Categorize findings
@@ -212,7 +224,9 @@ impl ReportingService {
             config,
             &investigation.workspace_id,
             "bob_artifacts/fix_plan.md",
-        ).await.ok();
+        )
+        .await
+        .ok();
 
         let approved_correction_plan = ApprovedPlanSection {
             approved_by: approval.as_ref().and_then(|a| a.approver_id.clone()),
@@ -236,7 +250,9 @@ impl ReportingService {
             config,
             &investigation.workspace_id,
             "bob_artifacts/changed_files.json",
-        ).await.ok();
+        )
+        .await
+        .ok();
 
         let mut modified_files = Vec::new();
         if let Some(ref raw) = changed_files_raw {
@@ -244,9 +260,21 @@ impl ReportingService {
                 if let Some(files) = v.get("files").and_then(|f| f.as_array()) {
                     for f in files {
                         modified_files.push(ModifiedFileEntry {
-                            relative_path: f.get("relative_path").and_then(|p| p.as_str()).unwrap_or("").to_string(),
-                            change_type: f.get("change_type").and_then(|t| t.as_str()).unwrap_or("modify").to_string(),
-                            rationale: f.get("rationale").and_then(|r| r.as_str()).unwrap_or("").to_string(),
+                            relative_path: f
+                                .get("relative_path")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            change_type: f
+                                .get("change_type")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("modify")
+                                .to_string(),
+                            rationale: f
+                                .get("rationale")
+                                .and_then(|r| r.as_str())
+                                .unwrap_or("")
+                                .to_string(),
                         });
                     }
                 }
@@ -260,9 +288,12 @@ impl ReportingService {
                 rationale: "Change conditional if-let to while-let loop to iterate all multipart fields (BUG-002)".to_string(),
             });
             modified_files.push(ModifiedFileEntry {
-                relative_path: "sample_project/broken/frontend/src/components/UploadForm.tsx".to_string(),
+                relative_path: "sample_project/broken/frontend/src/components/UploadForm.tsx"
+                    .to_string(),
                 change_type: "modify".to_string(),
-                rationale: "Align form field name from 'file' to 'files' per OpenAPI spec (BUG-001)".to_string(),
+                rationale:
+                    "Align form field name from 'file' to 'files' per OpenAPI spec (BUG-001)"
+                        .to_string(),
             });
             modified_files.push(ModifiedFileEntry {
                 relative_path: "sample_project/broken/backend/tests/integration_tests.rs".to_string(),
@@ -274,14 +305,23 @@ impl ReportingService {
         // 13. Actual code diff
         let mut actual_code_diff = String::new();
         for file in &modified_files {
-            let clean_rel = file.relative_path.trim_start_matches('/').trim_start_matches('\\');
+            let clean_rel = file
+                .relative_path
+                .trim_start_matches('/')
+                .trim_start_matches('\\');
             let orig_path = config.sample_project_root.join(clean_rel);
-            let modified_path = config.workspace_root.join(&investigation.workspace_id).join(clean_rel);
+            let modified_path = config
+                .workspace_root
+                .join(&investigation.workspace_id)
+                .join(clean_rel);
 
             let orig_content = std::fs::read_to_string(&orig_path).unwrap_or_default();
             let modified_content = std::fs::read_to_string(&modified_path).unwrap_or_default();
 
-            if !orig_content.is_empty() && !modified_content.is_empty() && orig_content != modified_content {
+            if !orig_content.is_empty()
+                && !modified_content.is_empty()
+                && orig_content != modified_content
+            {
                 let mut diff_str = format!("--- a/{}\n+++ b/{}\n", clean_rel, clean_rel);
                 for d in diff::lines(&orig_content, &modified_content) {
                     match d {
@@ -291,7 +331,7 @@ impl ReportingService {
                     }
                 }
                 if !actual_code_diff.is_empty() {
-                    actual_code_diff.push_str("\n");
+                    actual_code_diff.push('\n');
                 }
                 actual_code_diff.push_str(&diff_str);
             }
@@ -308,7 +348,8 @@ impl ReportingService {
 @@ -24,3 +24,3 @@
 -      formData.append('file', f);
 +      formData.append('files', f);
-"#.to_string();
+"#
+            .to_string();
         }
 
         // 14. Regression-test results
@@ -338,11 +379,20 @@ impl ReportingService {
         // 15. Independent verification status
         let independent_verification_status = VerificationStatusSection {
             execution_id: verification.as_ref().map(|v| v.id.clone()),
-            status: verification.as_ref().map(|v| v.status.clone()).unwrap_or_else(|| "not_run".to_string()),
-            exit_code: verification.as_ref().and_then(|v| v.exit_code).map(|c| c as i32),
+            status: verification
+                .as_ref()
+                .map(|v| v.status.clone())
+                .unwrap_or_else(|| "not_run".to_string()),
+            exit_code: verification
+                .as_ref()
+                .and_then(|v| v.exit_code)
+                .map(|c| c as i32),
             duration_ms: verification.as_ref().and_then(|v| v.duration_ms),
             summary: verification.as_ref().and_then(|v| v.summary.clone()),
-            verified: verification.as_ref().map(|v| v.exit_code == Some(0)).unwrap_or(false),
+            verified: verification
+                .as_ref()
+                .map(|v| v.exit_code == Some(0))
+                .unwrap_or(false),
         };
 
         // 16. Evidence graph
@@ -411,7 +461,12 @@ impl ReportingService {
         });
         edges.push(EvidenceGraphEdge {
             from: "node-test-baseline".to_string(),
-            to: nodes.iter().find(|n| n.node_type == "backend").map(|n| n.id.as_str()).unwrap_or("node-req-contract").to_string(),
+            to: nodes
+                .iter()
+                .find(|n| n.node_type == "backend")
+                .map(|n| n.id.as_str())
+                .unwrap_or("node-req-contract")
+                .to_string(),
             label: "reproduced_by".to_string(),
         });
 
@@ -422,7 +477,12 @@ impl ReportingService {
             description: "Frontend field name discrepancy coupled with non-looping multipart parser leads to silent omission of files".to_string(),
         });
         edges.push(EvidenceGraphEdge {
-            from: nodes.iter().find(|n| n.node_type == "frontend").map(|n| n.id.as_str()).unwrap_or("node-req-contract").to_string(),
+            from: nodes
+                .iter()
+                .find(|n| n.node_type == "frontend")
+                .map(|n| n.id.as_str())
+                .unwrap_or("node-req-contract")
+                .to_string(),
             to: "node-root-cause".to_string(),
             label: "leads_to".to_string(),
         });
@@ -454,7 +514,9 @@ impl ReportingService {
         let evidence_graph = EvidenceGraphSection { nodes, edges };
 
         // 17. Productivity measurements
-        let productivity_measurements = MetricsService::compute(db, config, investigation).await.ok();
+        let productivity_measurements = MetricsService::compute(db, config, investigation)
+            .await
+            .ok();
 
         // 18. Remaining risks
         let remaining_risks = vec![
@@ -497,11 +559,21 @@ impl ReportingService {
             status: investigation.status.clone(),
             created_at: investigation.created_at.clone(),
             completed_at: investigation.completed_at.clone(),
-            findings: findings_models.iter().map(|f| serde_json::to_value(f).unwrap_or_default()).collect(),
-            evidence: evidence_models.iter().map(|e| serde_json::to_value(e).unwrap_or_default()).collect(),
+            findings: findings_models
+                .iter()
+                .map(|f| serde_json::to_value(f).unwrap_or_default())
+                .collect(),
+            evidence: evidence_models
+                .iter()
+                .map(|e| serde_json::to_value(e).unwrap_or_default())
+                .collect(),
             baseline_execution: baseline.map(|e| serde_json::to_value(e).unwrap_or_default()),
-            verification_execution: verification.map(|e| serde_json::to_value(e).unwrap_or_default()),
-            audit_events: audit_models.iter().map(|e| serde_json::to_value(e).unwrap_or_default()).collect(),
+            verification_execution: verification
+                .map(|e| serde_json::to_value(e).unwrap_or_default()),
+            audit_events: audit_models
+                .iter()
+                .map(|e| serde_json::to_value(e).unwrap_or_default())
+                .collect(),
         })
     }
 
@@ -517,21 +589,31 @@ impl ReportingService {
             if findings.is_empty() {
                 return "<p class=\"text-muted\">None recorded.</p>".to_string();
             }
-            findings.iter().map(|f| {
-                let title = html_escape(f["title"].as_str().unwrap_or("Finding"));
-                let desc = html_escape(f["description"].as_str().unwrap_or(""));
-                let conf = html_escape(f["confidence"].as_str().unwrap_or("HIGH"));
-                let exp = f["expected_behavior"].as_str().map(|s| format!("<p><strong>Expected:</strong> {}</p>", html_escape(s))).unwrap_or_default();
-                let obs = f["observed_behavior"].as_str().map(|s| format!("<p><strong>Observed:</strong> {}</p>", html_escape(s))).unwrap_or_default();
-                format!(
-                    r#"<div class="card finding-card">
+            findings
+                .iter()
+                .map(|f| {
+                    let title = html_escape(f["title"].as_str().unwrap_or("Finding"));
+                    let desc = html_escape(f["description"].as_str().unwrap_or(""));
+                    let conf = html_escape(f["confidence"].as_str().unwrap_or("HIGH"));
+                    let exp = f["expected_behavior"]
+                        .as_str()
+                        .map(|s| format!("<p><strong>Expected:</strong> {}</p>", html_escape(s)))
+                        .unwrap_or_default();
+                    let obs = f["observed_behavior"]
+                        .as_str()
+                        .map(|s| format!("<p><strong>Observed:</strong> {}</p>", html_escape(s)))
+                        .unwrap_or_default();
+                    format!(
+                        r#"<div class="card finding-card">
   <h4>{title} <span class="badge badge-confidence">{conf} Confidence</span></h4>
   <p>{desc}</p>
   {exp}
   {obs}
 </div>"#
-                )
-            }).collect::<Vec<_>>().join("\n")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
         };
 
         let doc_findings_html = format_findings(&report.documentation_findings);
@@ -550,43 +632,54 @@ impl ReportingService {
         }).collect::<Vec<_>>().join("\n");
 
         // Code diff syntax colored
-        let diff_html = report.actual_code_diff.lines().map(|line| {
-            let esc = html_escape(line);
-            if line.starts_with('+') && !line.starts_with("+++") {
-                format!("<div class=\"diff-line diff-add\">{}</div>", esc)
-            } else if line.starts_with('-') && !line.starts_with("---") {
-                format!("<div class=\"diff-line diff-del\">{}</div>", esc)
-            } else if line.starts_with("@@") {
-                format!("<div class=\"diff-line diff-hdr\">{}</div>", esc)
-            } else if line.starts_with("---") || line.starts_with("+++") {
-                format!("<div class=\"diff-line diff-meta\">{}</div>", esc)
-            } else {
-                format!("<div class=\"diff-line\">{}</div>", esc)
-            }
-        }).collect::<Vec<_>>().join("\n");
+        let diff_html = report
+            .actual_code_diff
+            .lines()
+            .map(|line| {
+                let esc = html_escape(line);
+                if line.starts_with('+') && !line.starts_with("+++") {
+                    format!("<div class=\"diff-line diff-add\">{}</div>", esc)
+                } else if line.starts_with('-') && !line.starts_with("---") {
+                    format!("<div class=\"diff-line diff-del\">{}</div>", esc)
+                } else if line.starts_with("@@") {
+                    format!("<div class=\"diff-line diff-hdr\">{}</div>", esc)
+                } else if line.starts_with("---") || line.starts_with("+++") {
+                    format!("<div class=\"diff-line diff-meta\">{}</div>", esc)
+                } else {
+                    format!("<div class=\"diff-line\">{}</div>", esc)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
 
         // Evidence graph nodes & edges
-        let graph_nodes_html = report.evidence_graph.nodes.iter().map(|n| {
-            let type_color = match n.node_type.as_str() {
-                "requirement" => "#1e3a5f",
-                "frontend" => "#2563eb",
-                "backend" => "#7c3aed",
-                "failing_test" => "#dc2626",
-                "root_cause" => "#d97706",
-                "fix" => "#059669",
-                "passing_test" => "#0d9488",
-                _ => "#4b5563",
-            };
-            format!(
-                r#"<div class="graph-node" style="border-left-color: {type_color};">
+        let graph_nodes_html = report
+            .evidence_graph
+            .nodes
+            .iter()
+            .map(|n| {
+                let type_color = match n.node_type.as_str() {
+                    "requirement" => "#1e3a5f",
+                    "frontend" => "#2563eb",
+                    "backend" => "#7c3aed",
+                    "failing_test" => "#dc2626",
+                    "root_cause" => "#d97706",
+                    "fix" => "#059669",
+                    "passing_test" => "#0d9488",
+                    _ => "#4b5563",
+                };
+                format!(
+                    r#"<div class="graph-node" style="border-left-color: {type_color};">
   <div class="graph-node-title" style="color: {type_color};">[{}] {}</div>
   <div class="graph-node-desc">{}</div>
 </div>"#,
-                html_escape(&n.node_type),
-                html_escape(&n.label),
-                html_escape(&n.description),
-            )
-        }).collect::<Vec<_>>().join("\n");
+                    html_escape(&n.node_type),
+                    html_escape(&n.label),
+                    html_escape(&n.description),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
 
         let graph_edges_html = report.evidence_graph.edges.iter().map(|e| {
             format!(
@@ -649,8 +742,18 @@ impl ReportingService {
         };
 
         // Risks and limitations
-        let risks_html = report.remaining_risks.iter().map(|r| format!("<li>{}</li>", html_escape(r))).collect::<Vec<_>>().join("\n");
-        let limitations_html = report.known_limitations.iter().map(|l| format!("<li>{}</li>", html_escape(l))).collect::<Vec<_>>().join("\n");
+        let risks_html = report
+            .remaining_risks
+            .iter()
+            .map(|r| format!("<li>{}</li>", html_escape(r)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let limitations_html = report
+            .known_limitations
+            .iter()
+            .map(|l| format!("<li>{}</li>", html_escape(l)))
+            .collect::<Vec<_>>()
+            .join("\n");
 
         format!(
             r#"<!DOCTYPE html>
@@ -933,41 +1036,150 @@ footer {{ text-align: center; margin-top: 3rem; color: var(--text-muted); font-s
             scenario_id = html_escape(&report.investigation_summary.scenario_id),
             workspace_id = html_escape(&report.investigation_summary.workspace_id),
             created_at = html_escape(&report.investigation_summary.created_at),
-            completed_at = html_escape(report.investigation_summary.completed_at.as_deref().unwrap_or("In progress")),
+            completed_at = html_escape(
+                report
+                    .investigation_summary
+                    .completed_at
+                    .as_deref()
+                    .unwrap_or("In progress")
+            ),
             original_bug_report = html_escape(&report.original_bug_report),
             expected_api_behavior = html_escape(&report.expected_api_behavior),
             observed_behavior = html_escape(&report.observed_behavior),
-            baseline_id = html_escape(report.baseline_reproduction.execution_id.as_deref().unwrap_or("none")),
+            baseline_id = html_escape(
+                report
+                    .baseline_reproduction
+                    .execution_id
+                    .as_deref()
+                    .unwrap_or("none")
+            ),
             baseline_status = html_escape(&report.baseline_reproduction.status),
-            baseline_reproduced = if report.baseline_reproduction.reproduced { "YES &mdash; Defects Confirmed" } else { "NO" },
-            baseline_exit_code = report.baseline_reproduction.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "none".to_string()),
-            baseline_duration = report.baseline_reproduction.duration_ms.map(|d| d.to_string()).unwrap_or_else(|| "0".to_string()),
-            baseline_summary = html_escape(report.baseline_reproduction.summary.as_deref().unwrap_or("No baseline summary recorded")),
+            baseline_reproduced = if report.baseline_reproduction.reproduced {
+                "YES &mdash; Defects Confirmed"
+            } else {
+                "NO"
+            },
+            baseline_exit_code = report
+                .baseline_reproduction
+                .exit_code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "none".to_string()),
+            baseline_duration = report
+                .baseline_reproduction
+                .duration_ms
+                .map(|d| d.to_string())
+                .unwrap_or_else(|| "0".to_string()),
+            baseline_summary = html_escape(
+                report
+                    .baseline_reproduction
+                    .summary
+                    .as_deref()
+                    .unwrap_or("No baseline summary recorded")
+            ),
             doc_findings_html = doc_findings_html,
             fe_findings_html = fe_findings_html,
             be_findings_html = be_findings_html,
             rc_findings_html = rc_findings_html,
-            plan_approver = html_escape(report.approved_correction_plan.approved_by.as_deref().unwrap_or("Pending")),
-            plan_hash = html_escape(report.approved_correction_plan.plan_hash.as_deref().unwrap_or("none")),
-            plan_approved_at = html_escape(report.approved_correction_plan.approved_at.as_deref().unwrap_or("Pending")),
-            plan_notes = html_escape(report.approved_correction_plan.notes.as_deref().unwrap_or("None")),
-            plan_content_block = report.approved_correction_plan.plan_content.as_ref().map(|c| {
-                format!("<div class=\"card\"><pre>{}</pre></div>", html_escape(c))
-            }).unwrap_or_default(),
+            plan_approver = html_escape(
+                report
+                    .approved_correction_plan
+                    .approved_by
+                    .as_deref()
+                    .unwrap_or("Pending")
+            ),
+            plan_hash = html_escape(
+                report
+                    .approved_correction_plan
+                    .plan_hash
+                    .as_deref()
+                    .unwrap_or("none")
+            ),
+            plan_approved_at = html_escape(
+                report
+                    .approved_correction_plan
+                    .approved_at
+                    .as_deref()
+                    .unwrap_or("Pending")
+            ),
+            plan_notes = html_escape(
+                report
+                    .approved_correction_plan
+                    .notes
+                    .as_deref()
+                    .unwrap_or("None")
+            ),
+            plan_content_block = report
+                .approved_correction_plan
+                .plan_content
+                .as_ref()
+                .map(|c| { format!("<div class=\"card\"><pre>{}</pre></div>", html_escape(c)) })
+                .unwrap_or_default(),
             implementation_summary = html_escape(&report.implementation_summary),
             modified_files_rows = modified_files_rows,
             diff_html = diff_html,
-            reg_baseline_summary = html_escape(report.regression_test_results.baseline_summary.as_deref().unwrap_or("8 passed, 3 failed")),
-            failed_baseline_list = report.regression_test_results.tests_failed_baseline.iter().map(|t| format!("<code>{}</code>", html_escape(t))).collect::<Vec<_>>().join(", "),
-            reg_verification_summary = html_escape(report.regression_test_results.verification_summary.as_deref().unwrap_or("11 passed, 0 failed")),
-            passed_verification_list = report.regression_test_results.tests_passed_verification.iter().map(|t| format!("<code>{}</code>", html_escape(t))).collect::<Vec<_>>().join(", "),
-            verif_id = html_escape(report.independent_verification_status.execution_id.as_deref().unwrap_or("none")),
+            reg_baseline_summary = html_escape(
+                report
+                    .regression_test_results
+                    .baseline_summary
+                    .as_deref()
+                    .unwrap_or("8 passed, 3 failed")
+            ),
+            failed_baseline_list = report
+                .regression_test_results
+                .tests_failed_baseline
+                .iter()
+                .map(|t| format!("<code>{}</code>", html_escape(t)))
+                .collect::<Vec<_>>()
+                .join(", "),
+            reg_verification_summary = html_escape(
+                report
+                    .regression_test_results
+                    .verification_summary
+                    .as_deref()
+                    .unwrap_or("11 passed, 0 failed")
+            ),
+            passed_verification_list = report
+                .regression_test_results
+                .tests_passed_verification
+                .iter()
+                .map(|t| format!("<code>{}</code>", html_escape(t)))
+                .collect::<Vec<_>>()
+                .join(", "),
+            verif_id = html_escape(
+                report
+                    .independent_verification_status
+                    .execution_id
+                    .as_deref()
+                    .unwrap_or("none")
+            ),
             verif_status = html_escape(&report.independent_verification_status.status),
-            verif_status_class = if report.independent_verification_status.verified { "status-success" } else { "status-error" },
-            verif_exit_code = report.independent_verification_status.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "none".to_string()),
-            verif_duration = report.independent_verification_status.duration_ms.map(|d| d.to_string()).unwrap_or_else(|| "0".to_string()),
-            verif_summary = html_escape(report.independent_verification_status.summary.as_deref().unwrap_or("Pending")),
-            verif_verified = if report.independent_verification_status.verified { "YES &mdash; Verified Clean" } else { "NO" },
+            verif_status_class = if report.independent_verification_status.verified {
+                "status-success"
+            } else {
+                "status-error"
+            },
+            verif_exit_code = report
+                .independent_verification_status
+                .exit_code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "none".to_string()),
+            verif_duration = report
+                .independent_verification_status
+                .duration_ms
+                .map(|d| d.to_string())
+                .unwrap_or_else(|| "0".to_string()),
+            verif_summary = html_escape(
+                report
+                    .independent_verification_status
+                    .summary
+                    .as_deref()
+                    .unwrap_or("Pending")
+            ),
+            verif_verified = if report.independent_verification_status.verified {
+                "YES &mdash; Verified Clean"
+            } else {
+                "NO"
+            },
             graph_nodes_html = graph_nodes_html,
             graph_edges_html = graph_edges_html,
             metrics_html = metrics_html,

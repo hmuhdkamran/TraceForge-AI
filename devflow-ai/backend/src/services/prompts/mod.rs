@@ -1,16 +1,18 @@
-use crate::models::investigation::Investigation;
 use crate::config::Config;
+use crate::models::investigation::Investigation;
 
 pub struct PromptService;
 
 impl PromptService {
     pub fn generate_investigation_prompt(investigation: &Investigation, config: &Config) -> String {
-        let workspace_path = config.workspace_root
+        let workspace_path = config
+            .workspace_root
             .join(&investigation.workspace_id)
             .display()
             .to_string();
 
-        format!(r#"# ContractGuard — Investigation Task
+        format!(
+            r#"# ContractGuard — Investigation Task
 
 ## Investigation ID
 {id}
@@ -116,12 +118,14 @@ After writing artifacts, return to ContractGuard and click **Sync Results**.
         plan_hash: &str,
         fix_plan: &str,
     ) -> String {
-        let workspace_path = config.workspace_root
+        let workspace_path = config
+            .workspace_root
             .join(&investigation.workspace_id)
             .display()
             .to_string();
 
-        format!(r#"# ContractGuard — Implementation Task
+        format!(
+            r#"# ContractGuard — Implementation Task
 
 ## Investigation ID
 {id}

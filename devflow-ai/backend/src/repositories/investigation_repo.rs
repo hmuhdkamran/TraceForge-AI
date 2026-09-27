@@ -2,8 +2,8 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::errors::{AppError, ApiResult};
-use crate::models::investigation::{Investigation, InvestigationArtifact, Approval};
+use crate::errors::{ApiResult, AppError};
+use crate::models::investigation::{Approval, Investigation, InvestigationArtifact};
 
 pub struct InvestigationRepo;
 
@@ -26,7 +26,9 @@ impl InvestigationRepo {
             id, title, description, project_id, scenario_id, workspace_id, now, now,
         ).execute(db).await?;
 
-        Self::get_by_id(db, &id).await?.ok_or_else(|| AppError::NotFound("Investigation not found after create".into()))
+        Self::get_by_id(db, &id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Investigation not found after create".into()))
     }
 
     pub async fn get_by_id(db: &SqlitePool, id: &str) -> ApiResult<Option<Investigation>> {
@@ -55,32 +57,42 @@ impl InvestigationRepo {
             "SELECT id, title, description, project_id, scenario_id, status, workspace_id, created_at, updated_at, approved_at, completed_at, failure_reason FROM investigations ORDER BY created_at DESC LIMIT ? OFFSET ?",
             limit, offset
         ).fetch_all(db).await?;
-        Ok(rows.into_iter().map(|r| Investigation {
-            id: r.id.unwrap_or_default(),
-            title: r.title,
-            description: r.description,
-            project_id: r.project_id,
-            scenario_id: r.scenario_id,
-            status: r.status,
-            workspace_id: r.workspace_id,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            approved_at: r.approved_at,
-            completed_at: r.completed_at,
-            failure_reason: r.failure_reason,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Investigation {
+                id: r.id.unwrap_or_default(),
+                title: r.title,
+                description: r.description,
+                project_id: r.project_id,
+                scenario_id: r.scenario_id,
+                status: r.status,
+                workspace_id: r.workspace_id,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                approved_at: r.approved_at,
+                completed_at: r.completed_at,
+                failure_reason: r.failure_reason,
+            })
+            .collect())
     }
 
     pub async fn count(db: &SqlitePool) -> ApiResult<i64> {
         let row = sqlx::query!("SELECT COUNT(*) as cnt FROM investigations")
-            .fetch_one(db).await?;
+            .fetch_one(db)
+            .await?;
         Ok(row.cnt as i64)
     }
 
     pub async fn update_status(db: &SqlitePool, id: &str, status: &str) -> ApiResult<()> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query!("UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?", status, now, id)
-            .execute(db).await?;
+        sqlx::query!(
+            "UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?",
+            status,
+            now,
+            id
+        )
+        .execute(db)
+        .await?;
         Ok(())
     }
 
@@ -132,7 +144,8 @@ impl InvestigationRepo {
                     content_sha256, now, validation_status, e.id
                 ).execute(db).await?;
             }
-            return Self::get_artifact_by_id(db, e.id.as_deref().unwrap_or("")).await?
+            return Self::get_artifact_by_id(db, e.id.as_deref().unwrap_or(""))
+                .await?
                 .ok_or_else(|| AppError::NotFound("Artifact not found after update".into()));
         }
 
@@ -142,11 +155,15 @@ impl InvestigationRepo {
             id, investigation_id, artifact_type, relative_path, content_sha256, now, now, validation_status
         ).execute(db).await?;
 
-        Self::get_artifact_by_id(db, &id).await?
+        Self::get_artifact_by_id(db, &id)
+            .await?
             .ok_or_else(|| AppError::NotFound("Artifact not found after insert".into()))
     }
 
-    pub async fn get_artifact_by_id(db: &SqlitePool, id: &str) -> ApiResult<Option<InvestigationArtifact>> {
+    pub async fn get_artifact_by_id(
+        db: &SqlitePool,
+        id: &str,
+    ) -> ApiResult<Option<InvestigationArtifact>> {
         let row = sqlx::query!(
             "SELECT id, investigation_id, artifact_type, schema_version, relative_path, content_sha256, created_at, imported_at, validation_status FROM investigation_artifacts WHERE id = ?",
             id
@@ -164,22 +181,28 @@ impl InvestigationRepo {
         }))
     }
 
-    pub async fn list_artifacts(db: &SqlitePool, investigation_id: &str) -> ApiResult<Vec<InvestigationArtifact>> {
+    pub async fn list_artifacts(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<Vec<InvestigationArtifact>> {
         let rows = sqlx::query!(
             "SELECT id, investigation_id, artifact_type, schema_version, relative_path, content_sha256, created_at, imported_at, validation_status FROM investigation_artifacts WHERE investigation_id = ? ORDER BY imported_at DESC",
             investigation_id
         ).fetch_all(db).await?;
-        Ok(rows.into_iter().map(|r| InvestigationArtifact {
-            id: r.id.unwrap_or_default(),
-            investigation_id: r.investigation_id,
-            artifact_type: r.artifact_type,
-            schema_version: r.schema_version,
-            relative_path: r.relative_path,
-            content_sha256: r.content_sha256,
-            created_at: r.created_at,
-            imported_at: r.imported_at,
-            validation_status: r.validation_status,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| InvestigationArtifact {
+                id: r.id.unwrap_or_default(),
+                investigation_id: r.investigation_id,
+                artifact_type: r.artifact_type,
+                schema_version: r.schema_version,
+                relative_path: r.relative_path,
+                content_sha256: r.content_sha256,
+                created_at: r.created_at,
+                imported_at: r.imported_at,
+                validation_status: r.validation_status,
+            })
+            .collect())
     }
 
     pub async fn create_approval(
@@ -197,11 +220,15 @@ impl InvestigationRepo {
             id, investigation_id, plan_hash, decision, now, approver_id, comment
         ).execute(db).await?;
 
-        Self::get_approval(db, investigation_id).await?
+        Self::get_approval(db, investigation_id)
+            .await?
             .ok_or_else(|| AppError::NotFound("Approval not found after create".into()))
     }
 
-    pub async fn get_approval(db: &SqlitePool, investigation_id: &str) -> ApiResult<Option<Approval>> {
+    pub async fn get_approval(
+        db: &SqlitePool,
+        investigation_id: &str,
+    ) -> ApiResult<Option<Approval>> {
         let row = sqlx::query!(
             "SELECT id, investigation_id, plan_hash, decision, approved_at, approver_id, comment FROM approvals WHERE investigation_id = ? ORDER BY approved_at DESC LIMIT 1",
             investigation_id

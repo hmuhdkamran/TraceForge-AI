@@ -4,7 +4,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::repositories::{InvestigationRepo, TestExecutionRepo};
 use crate::services::{investigation::InvestigationService, verification::VerificationService};
 use crate::state::SharedState;
@@ -25,7 +25,8 @@ pub async fn run_verification(
         return Err(AppError::ApprovalRequired);
     }
 
-    InvestigationService::transition_status(&state.db, &investigation, "VERIFICATION_RUNNING").await?;
+    InvestigationService::transition_status(&state.db, &investigation, "VERIFICATION_RUNNING")
+        .await?;
     let _ = crate::repositories::AuditRepo::record(
         &state.db,
         Some(&id),
@@ -33,7 +34,8 @@ pub async fn run_verification(
         "system",
         None,
         json!({}),
-    ).await;
+    )
+    .await;
 
     let db = state.db.clone();
     let config = state.config.clone();
@@ -52,9 +54,11 @@ pub async fn run_verification(
                         "system",
                         None,
                         json!({ "summary": result.summary, "exit_code": result.exit_code }),
-                    ).await;
+                    )
+                    .await;
                 } else {
-                    let _ = InvestigationRepo::update_status(&db, &inv_id, "VERIFICATION_FAILED").await;
+                    let _ =
+                        InvestigationRepo::update_status(&db, &inv_id, "VERIFICATION_FAILED").await;
                     let _ = crate::repositories::AuditRepo::record(
                         &db,
                         Some(&inv_id),
@@ -62,7 +66,8 @@ pub async fn run_verification(
                         "system",
                         None,
                         json!({ "summary": result.summary, "exit_code": result.exit_code }),
-                    ).await;
+                    )
+                    .await;
                 }
                 tracing::info!("Verification complete: {}", result.summary);
             }
@@ -76,12 +81,15 @@ pub async fn run_verification(
                     "system",
                     None,
                     json!({ "error": e.to_string() }),
-                ).await;
+                )
+                .await;
             }
         }
     });
 
-    Ok(Json(json!({ "status": "verification started", "investigation_id": id })))
+    Ok(Json(
+        json!({ "status": "verification started", "investigation_id": id }),
+    ))
 }
 
 pub async fn get_verification(
@@ -114,16 +122,21 @@ pub async fn get_diff(
         &state.config,
         &investigation.workspace_id,
         "bob_artifacts/implementation_summary.md",
-    ).await.unwrap_or_else(|_| "Implementation summary not yet available.".into());
+    )
+    .await
+    .unwrap_or_else(|_| "Implementation summary not yet available.".into());
 
-    let changed_files: serde_json::Value = match crate::services::workspace::WorkspaceService::read_artifact(
-        &state.config,
-        &investigation.workspace_id,
-        "bob_artifacts/changed_files.json",
-    ).await {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => serde_json::Value::Null,
-    };
+    let changed_files: serde_json::Value =
+        match crate::services::workspace::WorkspaceService::read_artifact(
+            &state.config,
+            &investigation.workspace_id,
+            "bob_artifacts/changed_files.json",
+        )
+        .await
+        {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => serde_json::Value::Null,
+        };
 
     // Compute diffs for modified files
     let mut file_diffs = Vec::new();
@@ -136,7 +149,11 @@ pub async fn get_diff(
                 // Original file in sample_project
                 let orig_path = state.config.sample_project_root.join(clean_rel);
                 // Modified file in isolated workspace
-                let modified_path = state.config.workspace_root.join(&investigation.workspace_id).join(clean_rel);
+                let modified_path = state
+                    .config
+                    .workspace_root
+                    .join(&investigation.workspace_id)
+                    .join(clean_rel);
 
                 let orig_content = std::fs::read_to_string(&orig_path).unwrap_or_default();
                 let modified_content = std::fs::read_to_string(&modified_path).unwrap_or_default();
@@ -151,7 +168,7 @@ pub async fn get_diff(
                         }
                     }
                     if !unified_diff.is_empty() {
-                        unified_diff.push_str("\n");
+                        unified_diff.push('\n');
                     }
                     unified_diff.push_str(&diff_str);
 

@@ -1,7 +1,10 @@
-use axum::{extract::{Path, State}, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use serde_json::json;
 
-use crate::errors::{AppError, ApiResult};
+use crate::errors::{ApiResult, AppError};
 use crate::repositories::InvestigationRepo;
 use crate::services::metrics::MetricsService;
 use crate::state::SharedState;

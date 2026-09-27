@@ -117,7 +117,15 @@ export function InvestigationDetailPage() {
             <OverviewTab investigation={investigation} />
           )}
           {activeTab === 'bob' && (
-            <BobWorkspacePanel investigation={investigation} onSync={() => qc.invalidateQueries({ queryKey: ['investigation', id] })} />
+            <BobWorkspacePanel
+              investigation={investigation}
+              onSync={() => {
+                qc.invalidateQueries({ queryKey: ['investigation', id] });
+                qc.invalidateQueries({ queryKey: ['findings', id] });
+                qc.invalidateQueries({ queryKey: ['plan', id] });
+                qc.invalidateQueries({ queryKey: ['investigation-events', id] });
+              }}
+            />
           )}
           {activeTab === 'findings' && (
             <FindingsPanel investigationId={id!} />

@@ -14,7 +14,7 @@ pub async fn get_metrics(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
-    let metrics = MetricsService::compute(&state.db, &investigation).await?;
+    let metrics = MetricsService::compute(&state.db, &state.config, &investigation).await?;
     Ok(Json(json!({ "metrics": metrics })))
 }
 

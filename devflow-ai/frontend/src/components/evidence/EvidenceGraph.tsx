@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { listFindings } from '../../services/api';
+import { listFindings, getReport } from '../../services/api';
 import type { Finding, Evidence, EvidenceGraphNode, EvidenceGraphEdge } from '../../types';
 
 interface Props {
@@ -30,17 +30,52 @@ const NODE_LABELS: Record<string, string> = {
 export function EvidenceGraph({ investigationId }: Props) {
   const [selected, setSelected] = React.useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data: findingsData, isLoading: loadingFindings } = useQuery({
     queryKey: ['findings', investigationId],
     queryFn: () => listFindings(investigationId),
   });
 
-  const findings = data?.findings ?? [];
-  const evidence = data?.evidence ?? [];
+  const { data: reportData, isLoading: loadingReport } = useQuery({
+    queryKey: ['report', investigationId],
+    queryFn: () => getReport(investigationId),
+  });
+
+  const findings = findingsData?.findings ?? [];
+  const evidence = findingsData?.evidence ?? [];
+
+  const isLoading = loadingFindings && loadingReport;
 
   if (isLoading) return <div className="text-gray-400 text-sm">Loading evidence graph...</div>;
 
-  if (findings.length === 0) {
+  // Prefer backend-computed comprehensive evidence graph from report if available
+  const reportGraph = (reportData as any)?.evidence_graph;
+  let nodes: EvidenceGraphNode[] = [];
+  let edges: EvidenceGraphEdge[] = [];
+
+  if (reportGraph && Array.isArray(reportGraph.nodes) && reportGraph.nodes.length > 0) {
+    nodes = reportGraph.nodes.map((n: any) => ({
+      id: n.id,
+      type: n.node_type || 'frontend',
+      label: n.label,
+      description: n.description,
+      data: n,
+    }));
+    edges = reportGraph.edges || [];
+  } else if (findings.length > 0) {
+    nodes = findings.map((f) => ({
+      id: f.id,
+      type: typeFromFinding(f),
+      label: f.title,
+      description: f.description,
+      data: f,
+    }));
+    const findingIds = findings.map((f) => f.id);
+    for (let i = 0; i < findingIds.length - 1; i++) {
+      edges.push({ from: findingIds[i], to: findingIds[i + 1], label: 'leads to' });
+    }
+  }
+
+  if (nodes.length === 0) {
     return (
       <div className="text-center py-8">
         <div className="text-gray-400 text-sm">No evidence yet. Sync Bob artifacts to build the evidence graph.</div>
@@ -48,30 +83,18 @@ export function EvidenceGraph({ investigationId }: Props) {
     );
   }
 
-  // Build graph nodes from findings
-  const nodes: EvidenceGraphNode[] = findings.map((f) => ({
-    id: f.id,
-    type: typeFromFinding(f),
-    label: f.title,
-    data: f,
-  }));
-
-  // Build edges: connect findings that share evidence
-  const edges: EvidenceGraphEdge[] = [];
-  const findingIds = findings.map((f) => f.id);
-  for (let i = 0; i < findingIds.length - 1; i++) {
-    edges.push({ from: findingIds[i], to: findingIds[i + 1], label: 'leads to' });
-  }
-
-  const selectedFinding = findings.find((f) => f.id === selected);
-  const selectedEvidence = evidence.filter((e) => e.finding_id === selected);
+  const selectedNode = nodes.find((n) => n.id === selected);
+  const selectedFinding = findings.find((f) => f.id === selected || `node-finding-${f.id}` === selected);
+  const selectedEvidence = selectedFinding
+    ? evidence.filter((e) => e.finding_id === selectedFinding.id)
+    : [];
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="font-semibold text-gray-900 mb-1">Contract Evidence Graph</h3>
         <p className="text-sm text-gray-500">
-          Traceable relationships between requirements, findings, root causes and fixes.
+          Traceable relationships linking OpenAPI requirements, findings, failing tests, root causes, approved fixes, and verified post-fix tests.
         </p>
       </div>
 
@@ -91,15 +114,16 @@ export function EvidenceGraph({ investigationId }: Props) {
           {nodes.map((node, idx) => (
             <div key={node.id} className="flex items-center gap-2 shrink-0">
               <button
+                type="button"
                 onClick={() => setSelected(node.id === selected ? null : node.id)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer max-w-32 ${
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all cursor-pointer w-36 ${
                   node.id === selected
                     ? 'border-blue-500 shadow-md bg-white'
                     : 'border-transparent hover:border-gray-300 bg-white hover:shadow-sm'
                 }`}
               >
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                   style={{ backgroundColor: NODE_COLORS[node.type] || '#6b7280' }}
                 >
                   {nodeIcon(node.type)}
@@ -108,14 +132,14 @@ export function EvidenceGraph({ investigationId }: Props) {
                   {node.label}
                 </div>
                 <div
-                  className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ color: NODE_COLORS[node.type], backgroundColor: `${NODE_COLORS[node.type]}20` }}
+                  className="text-[11px] px-1.5 py-0.5 rounded uppercase font-semibold"
+                  style={{ color: NODE_COLORS[node.type], backgroundColor: `${NODE_COLORS[node.type]}15` }}
                 >
                   {NODE_LABELS[node.type] || node.type}
                 </div>
               </button>
               {idx < nodes.length - 1 && (
-                <div className="text-gray-300 text-lg mt-1">→</div>
+                <div className="text-gray-300 text-lg mt-1">&rarr;</div>
               )}
             </div>
           ))}
@@ -123,27 +147,39 @@ export function EvidenceGraph({ investigationId }: Props) {
       </div>
 
       {/* Selected node detail */}
-      {selectedFinding && (
+      {selectedNode && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-          <div className="font-medium text-gray-900">{selectedFinding.title}</div>
-          <p className="text-sm text-gray-600">{selectedFinding.description}</p>
+          <div className="flex items-center justify-between">
+            <div className="font-medium text-gray-900">{selectedNode.label}</div>
+            <span
+              className="text-xs px-2 py-0.5 rounded font-semibold uppercase"
+              style={{
+                color: NODE_COLORS[selectedNode.type] || '#4b5563',
+                backgroundColor: `${NODE_COLORS[selectedNode.type] || '#4b5563'}15`,
+              }}
+            >
+              {NODE_LABELS[selectedNode.type] || selectedNode.type}
+            </span>
+          </div>
 
-          {selectedFinding.expected_behavior && (
+          <p className="text-sm text-gray-600">{selectedNode.description || (selectedNode.data as any)?.description}</p>
+
+          {selectedFinding?.expected_behavior && (
             <div>
-              <div className="text-xs text-gray-500 mb-1">Expected</div>
-              <div className="text-xs text-gray-700">{selectedFinding.expected_behavior}</div>
+              <div className="text-xs font-semibold text-gray-500 mb-1">Expected</div>
+              <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded">{selectedFinding.expected_behavior}</div>
             </div>
           )}
-          {selectedFinding.observed_behavior && (
+          {selectedFinding?.observed_behavior && (
             <div>
-              <div className="text-xs text-gray-500 mb-1">Observed</div>
-              <div className="text-xs text-red-700">{selectedFinding.observed_behavior}</div>
+              <div className="text-xs font-semibold text-gray-500 mb-1">Observed</div>
+              <div className="text-xs text-red-700 bg-red-50 p-2 rounded">{selectedFinding.observed_behavior}</div>
             </div>
           )}
 
           {selectedEvidence.length > 0 && (
             <div>
-              <div className="text-xs text-gray-500 mb-2">Evidence ({selectedEvidence.length})</div>
+              <div className="text-xs font-semibold text-gray-500 mb-2">Evidence ({selectedEvidence.length})</div>
               {selectedEvidence.map((ev) => (
                 <div key={ev.id} className="bg-gray-50 rounded p-2 text-xs mb-2">
                   {ev.source_file && (
@@ -153,12 +189,6 @@ export function EvidenceGraph({ investigationId }: Props) {
                   <div className="text-gray-600 mt-1">{ev.description}</div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {selectedEvidence.length === 0 && (
-            <div className="text-xs text-amber-600">
-              No source evidence stored for this finding. Bob should have provided source references.
             </div>
           )}
         </div>
@@ -185,9 +215,8 @@ function nodeIcon(type: string): string {
     case 'backend': return 'B';
     case 'failing_test': return '✗';
     case 'root_cause': return '!';
-    case 'fix': return '✓';
+    case 'fix': return 'Fix';
     case 'passing_test': return '✓';
     default: return '?';
   }
 }
-

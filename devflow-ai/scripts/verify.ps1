@@ -81,5 +81,5 @@ try {
 
 Write-Host ""
 Write-Host "=================================================" -ForegroundColor Cyan
-Write-Host " All Systems Verified: M1, M2, M3, M4, and M5 Complete!" -ForegroundColor Green
+Write-Host " All Systems Verified: M1, M2, M3, M4, M5, and M6 Complete!" -ForegroundColor Green
 Write-Host "=================================================" -ForegroundColor Cyan

@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { PlayCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { getVerification, runVerification, getDiff } from '../../services/api';
+import { DiffViewer } from './DiffViewer';
 import type { Investigation } from '../../types';
 import { formatDuration, formatDatetime } from '../../utils/status';
 
@@ -64,13 +65,10 @@ export function VerificationPanel({ investigation, onVerify }: Props) {
         />
       </div>
 
-      {/* Implementation diff */}
+      {/* Code diff & implementation details */}
       {diffData && (
-        <div>
-          <div className="text-sm font-medium text-gray-700 mb-2">Implementation Summary</div>
-          <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
-            {diffData.implementation_summary}
-          </pre>
+        <div className="border-t border-gray-100 pt-4">
+          <DiffViewer diffData={diffData} />
         </div>
       )}
 

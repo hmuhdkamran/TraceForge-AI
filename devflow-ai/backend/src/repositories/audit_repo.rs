@@ -20,27 +20,26 @@ impl AuditRepo {
         let now = Utc::now().to_rfc3339();
         let details_str = details.to_string();
 
-        sqlx::query!(
-            "INSERT INTO audit_events (id, investigation_id, event_type, actor_type, actor_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            id,
-            investigation_id,
-            event_type,
-            actor_type,
-            actor_id,
-            details_str,
-            now
+        sqlx::query(
+            "INSERT INTO audit_events (id, investigation_id, event_type, actor_type, actor_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
+        .bind(&id)
+        .bind(investigation_id)
+        .bind(event_type)
+        .bind(actor_type)
+        .bind(actor_id)
+        .bind(&details_str)
+        .bind(&now)
         .execute(db)
         .await?;
         Ok(())
     }
 
     pub async fn list_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<Vec<AuditEvent>> {
-        let rows = sqlx::query_as!(
-            AuditEvent,
-            "SELECT id, investigation_id, event_type, actor_type, actor_id, details_json, created_at FROM audit_events WHERE investigation_id = ? ORDER BY created_at ASC",
-            investigation_id
+        let rows = sqlx::query_as::<_, AuditEvent>(
+            "SELECT id, investigation_id, event_type, actor_type, actor_id, details_json, created_at FROM audit_events WHERE investigation_id = ? ORDER BY created_at ASC"
         )
+        .bind(investigation_id)
         .fetch_all(db)
         .await?;
         Ok(rows)

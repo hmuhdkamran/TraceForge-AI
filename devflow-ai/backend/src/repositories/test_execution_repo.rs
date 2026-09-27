@@ -17,14 +17,14 @@ impl TestExecutionRepo {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
 
-        sqlx::query!(
-            "INSERT INTO test_executions (id, investigation_id, execution_type, command_id, status, started_at) VALUES (?, ?, ?, ?, 'running', ?)",
-            id,
-            investigation_id,
-            execution_type,
-            command_id,
-            now
+        sqlx::query(
+            "INSERT INTO test_executions (id, investigation_id, execution_type, command_id, status, started_at) VALUES (?, ?, ?, ?, 'running', ?)"
         )
+        .bind(&id)
+        .bind(investigation_id)
+        .bind(execution_type)
+        .bind(command_id)
+        .bind(&now)
         .execute(db)
         .await?;
 
@@ -32,11 +32,10 @@ impl TestExecutionRepo {
     }
 
     pub async fn get_by_id(db: &SqlitePool, id: &str) -> ApiResult<Option<TestExecution>> {
-        let row = sqlx::query_as!(
-            TestExecution,
-            "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE id = ?",
-            id
+        let row = sqlx::query_as::<_, TestExecution>(
+            "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE id = ?"
         )
+        .bind(id)
         .fetch_optional(db)
         .await?;
         Ok(row)
@@ -53,17 +52,17 @@ impl TestExecutionRepo {
         summary: Option<&str>,
     ) -> ApiResult<()> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query!(
-            "UPDATE test_executions SET status = ?, exit_code = ?, finished_at = ?, duration_ms = ?, stdout_path = ?, stderr_path = ?, summary = ? WHERE id = ?",
-            status,
-            exit_code,
-            now,
-            duration_ms,
-            stdout_path,
-            stderr_path,
-            summary,
-            id
+        sqlx::query(
+            "UPDATE test_executions SET status = ?, exit_code = ?, finished_at = ?, duration_ms = ?, stdout_path = ?, stderr_path = ?, summary = ? WHERE id = ?"
         )
+        .bind(status)
+        .bind(exit_code)
+        .bind(&now)
+        .bind(duration_ms)
+        .bind(stdout_path)
+        .bind(stderr_path)
+        .bind(summary)
+        .bind(id)
         .execute(db)
         .await?;
         Ok(())
@@ -71,21 +70,19 @@ impl TestExecutionRepo {
 
     pub async fn list_for_investigation(db: &SqlitePool, investigation_id: &str, execution_type: Option<&str>) -> ApiResult<Vec<TestExecution>> {
         if let Some(et) = execution_type {
-            let rows = sqlx::query_as!(
-                TestExecution,
-                "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC",
-                investigation_id,
-                et
+            let rows = sqlx::query_as::<_, TestExecution>(
+                "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC"
             )
+            .bind(investigation_id)
+            .bind(et)
             .fetch_all(db)
             .await?;
             Ok(rows)
         } else {
-            let rows = sqlx::query_as!(
-                TestExecution,
-                "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? ORDER BY started_at DESC",
-                investigation_id
+            let rows = sqlx::query_as::<_, TestExecution>(
+                "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? ORDER BY started_at DESC"
             )
+            .bind(investigation_id)
             .fetch_all(db)
             .await?;
             Ok(rows)
@@ -93,12 +90,11 @@ impl TestExecutionRepo {
     }
 
     pub async fn get_latest(db: &SqlitePool, investigation_id: &str, execution_type: &str) -> ApiResult<Option<TestExecution>> {
-        let row = sqlx::query_as!(
-            TestExecution,
-            "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC LIMIT 1",
-            investigation_id,
-            execution_type
+        let row = sqlx::query_as::<_, TestExecution>(
+            "SELECT id, investigation_id, execution_type, command_id, status, exit_code, started_at, finished_at, duration_ms, stdout_path, stderr_path, summary FROM test_executions WHERE investigation_id = ? AND execution_type = ? ORDER BY started_at DESC LIMIT 1"
         )
+        .bind(investigation_id)
+        .bind(execution_type)
         .fetch_optional(db)
         .await?;
         Ok(row)

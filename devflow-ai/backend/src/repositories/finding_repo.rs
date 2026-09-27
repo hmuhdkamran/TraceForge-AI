@@ -21,44 +21,43 @@ impl FindingRepo {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
 
-        sqlx::query!(
-            "INSERT INTO findings (id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unverified', ?)",
-            id,
-            investigation_id,
-            finding_type,
-            title,
-            description,
-            expected_behavior,
-            observed_behavior,
-            confidence,
-            now
+        sqlx::query(
+            "INSERT INTO findings (id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unverified', ?)"
         )
+        .bind(&id)
+        .bind(investigation_id)
+        .bind(finding_type)
+        .bind(title)
+        .bind(description)
+        .bind(expected_behavior)
+        .bind(observed_behavior)
+        .bind(confidence)
+        .bind(&now)
         .execute(db)
         .await?;
 
-        let row = sqlx::query_as!(
-            Finding,
-            "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE id = ?",
-            id
+        let row = sqlx::query_as::<_, Finding>(
+            "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE id = ?"
         )
+        .bind(&id)
         .fetch_one(db)
         .await?;
         Ok(row)
     }
 
     pub async fn list(db: &SqlitePool, investigation_id: &str) -> ApiResult<Vec<Finding>> {
-        let rows = sqlx::query_as!(
-            Finding,
-            "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE investigation_id = ? ORDER BY created_at ASC",
-            investigation_id
+        let rows = sqlx::query_as::<_, Finding>(
+            "SELECT id, investigation_id, finding_type, title, description, expected_behavior, observed_behavior, confidence, verification_status, created_at FROM findings WHERE investigation_id = ? ORDER BY created_at ASC"
         )
+        .bind(investigation_id)
         .fetch_all(db)
         .await?;
         Ok(rows)
     }
 
     pub async fn delete_for_investigation(db: &SqlitePool, investigation_id: &str) -> ApiResult<()> {
-        sqlx::query!("DELETE FROM findings WHERE investigation_id = ?", investigation_id)
+        sqlx::query("DELETE FROM findings WHERE investigation_id = ?")
+            .bind(investigation_id)
             .execute(db)
             .await?;
         Ok(())

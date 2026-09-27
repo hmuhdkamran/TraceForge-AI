@@ -100,14 +100,22 @@ pub async fn run_baseline(
             &db, &config, &investigation, "baseline"
         ).await {
             Ok(result) => {
+                tracing::info!("Baseline complete: {}", result.summary);
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
-                tracing::info!("Baseline complete: {}", result.summary);
             }
             Err(e) => {
-                tracing::error!("Baseline failed: {}", e);
+                tracing::error!("Baseline execution failed: {}", e);
+                // Record the failure reason and stay at BASELINE_CAPTURED so the UI shows the error
                 let _ = InvestigationRepo::update_status(&db, &inv_id, "BASELINE_CAPTURED").await;
-                let _ = InvestigationRepo::update_status(&db, &inv_id, "AWAITING_BOB_INVESTIGATION").await;
+                let _ = crate::repositories::AuditRepo::record(
+                    &db,
+                    Some(&inv_id),
+                    "baseline.failed",
+                    "system",
+                    None,
+                    serde_json::json!({ "error": e.to_string() }),
+                ).await;
             }
         }
     });
@@ -120,8 +128,9 @@ pub async fn get_baseline(
     Path(id): Path<String>,
 ) -> ApiResult<Json<Value>> {
     use crate::repositories::TestExecutionRepo;
+    use crate::services::workspace::WorkspaceService;
 
-    InvestigationRepo::get_by_id(&state.db, &id)
+    let investigation = InvestigationRepo::get_by_id(&state.db, &id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Investigation {} not found", id)))?;
 
@@ -129,7 +138,31 @@ pub async fn get_baseline(
         &state.db, &id, Some("baseline")
     ).await?;
 
-    Ok(Json(json!({ "baseline_executions": executions })))
+    // Enrich each execution with its log file content
+    let enriched: Vec<serde_json::Value> = executions.iter().map(|e| {
+        let content = if let Some(ref path) = e.stdout_path {
+            if !path.is_empty() {
+                WorkspaceService::read_artifact_sync(&state.config, &investigation.workspace_id, path)
+                    .unwrap_or_default()
+            } else { String::new() }
+        } else { String::new() };
+        json!({
+            "id": e.id,
+            "investigation_id": e.investigation_id,
+            "execution_type": e.execution_type,
+            "command_id": e.command_id,
+            "status": e.status,
+            "exit_code": e.exit_code,
+            "started_at": e.started_at,
+            "finished_at": e.finished_at,
+            "duration_ms": e.duration_ms,
+            "summary": e.summary,
+            "stdout": content,
+            "stderr": "",
+        })
+    }).collect();
+
+    Ok(Json(json!({ "baseline_executions": enriched })))
 }
 
 pub async fn get_bob_investigation_prompt(

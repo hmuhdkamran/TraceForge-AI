@@ -234,19 +234,23 @@ impl ArtifactService {
             }
         }
 
-        // Import additional evidence
+        // Import additional evidence — match by finding_id from diagnosis
+        let imported_findings = FindingRepo::list(db, investigation_id).await?;
+        // Build a map from original diagnosis finding id → db row id
+        // Findings are stored in the same order as diagnosis.findings, so zip by index
+        let finding_id_map: std::collections::HashMap<&str, &str> = diagnosis.findings
+            .iter()
+            .zip(imported_findings.iter())
+            .map(|(diag_f, db_f)| (diag_f.id.as_str(), db_f.id.as_str()))
+            .collect();
+
         for e in &diagnosis.evidence {
-            // Find the finding with matching id
-            if let Some(finding_row) = {
-                let findings = FindingRepo::list(db, investigation_id).await?;
-                // Map by position since we import them in order
-                // Best effort — match evidence to finding by finding_id from original diagnosis
-                findings.into_iter().find(|_| true) // use first finding as fallback
-            } {
+            // Look up the DB row id for the diagnosis finding_id
+            if let Some(&db_finding_id) = finding_id_map.get(e.finding_id.as_str()) {
                 EvidenceRepo::create(
                     db,
                     investigation_id,
-                    &finding_row.id,
+                    db_finding_id,
                     &e.evidence_type,
                     e.source_file.as_deref().unwrap_or(""),
                     e.start_line,
@@ -255,6 +259,11 @@ impl ArtifactService {
                     e.test_id.as_deref(),
                     &e.description,
                 ).await?;
+            } else {
+                tracing::warn!(
+                    "Evidence references unknown finding_id '{}' — skipping",
+                    e.finding_id
+                );
             }
         }
 

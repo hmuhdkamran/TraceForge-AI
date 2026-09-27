@@ -50,7 +50,7 @@ impl VerificationService {
             execution_type,
             CMD_RUST_BACKEND_TESTS,
             "cargo",
-            &["test", "--", "--test-output=immediate"],
+            &["test"],
             &broken_backend,
         ).await
     }
@@ -89,13 +89,12 @@ impl VerificationService {
         args: &[&str],
         working_dir: &PathBuf,
     ) -> ApiResult<ExecutionResult> {
-        // Validate working_dir is under workspace_root
-        let workspace_root_str = config.workspace_root.canonicalize()
-            .unwrap_or_else(|_| config.workspace_root.clone())
-            .to_string_lossy()
-            .to_string();
-        let working_dir_str = working_dir.to_string_lossy().to_string();
-        if !working_dir_str.starts_with(&workspace_root_str) {
+        // Validate working_dir is under workspace_root using canonical absolute paths
+        let workspace_root_canon = config.workspace_root.canonicalize()
+            .map_err(|e| AppError::Workspace(format!("Cannot resolve workspace root: {}", e)))?;
+        let working_dir_canon = working_dir.canonicalize()
+            .map_err(|e| AppError::Workspace(format!("Cannot resolve working directory: {}", e)))?;
+        if !working_dir_canon.starts_with(&workspace_root_canon) {
             return Err(AppError::PathTraversal);
         }
 
@@ -118,44 +117,46 @@ impl VerificationService {
 
         match output_result {
             Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-                // Truncate if needed
-                let stdout = Self::truncate_output(&stdout, config.max_output_bytes);
-                let stderr = Self::truncate_output(&stderr, config.max_output_bytes);
+                // On Windows cargo test writes test results to stderr, not stdout.
+                // Combine both so the summary parser and UI always have the full output.
+                let raw_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let raw_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                let combined = format!("{}{}", raw_stdout, raw_stderr);
+                let combined = Self::truncate_output(&combined, config.max_output_bytes);
 
                 let exit_code = output.status.code().unwrap_or(-1) as i64;
                 let status = if exit_code == 0 { "passed" } else { "failed" };
 
-                // Save stdout/stderr to workspace files
-                let stdout_rel = format!("logs/{}_stdout.txt", execution.id);
-                let stderr_rel = format!("logs/{}_stderr.txt", execution.id);
+                // Save combined output to workspace log file
+                let log_rel = format!("logs/{}_output.txt", execution.id);
+                let workspace_id_str = working_dir_canon
+                    .strip_prefix(&workspace_root_canon)
+                    .ok()
+                    .and_then(|p| p.components().next())
+                    .map(|c| c.as_os_str().to_string_lossy().to_string())
+                    .unwrap_or_default();
 
-                // Best-effort log write
-                if let Ok(ws_id) = crate::services::workspace::WorkspaceService::validate_path(
-                    config,
-                    &{
-                        // Extract workspace_id from working_dir
-                        let rel = working_dir_str.trim_start_matches(&workspace_root_str).trim_start_matches('/').trim_start_matches('\\');
-                        rel.split(['/', '\\']).next().unwrap_or("").to_string()
-                    },
-                    &stdout_rel,
-                ) {
-                    if let Some(parent) = ws_id.parent() {
-                        let _ = std::fs::create_dir_all(parent);
+                if !workspace_id_str.is_empty() {
+                    if let Ok(ws_path) = crate::services::workspace::WorkspaceService::validate_path(
+                        config,
+                        &workspace_id_str,
+                        &log_rel,
+                    ) {
+                        if let Some(parent) = ws_path.parent() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                        let _ = std::fs::write(&ws_path, &combined);
                     }
-                    let _ = std::fs::write(&ws_id, &stdout);
                 }
 
-                let summary = Self::build_summary(exit_code, &stdout, &stderr);
+                let summary = Self::build_summary(exit_code, &combined);
 
                 TestExecutionRepo::complete(
                     db,
                     &execution.id,
                     exit_code,
                     status,
-                    None,
+                    Some(&log_rel),
                     None,
                     duration_ms,
                     Some(&summary),
@@ -170,7 +171,8 @@ impl VerificationService {
                     serde_json::json!({
                         "command_id": command_id,
                         "exit_code": exit_code,
-                        "duration_ms": duration_ms
+                        "duration_ms": duration_ms,
+                        "summary": summary
                     }),
                 ).await?;
 
@@ -179,8 +181,8 @@ impl VerificationService {
                     status: status.to_string(),
                     exit_code,
                     duration_ms,
-                    stdout,
-                    stderr,
+                    stdout: combined,
+                    stderr: String::new(),
                     summary,
                 })
             }
@@ -204,18 +206,17 @@ impl VerificationService {
         }
     }
 
-    fn build_summary(exit_code: i64, stdout: &str, stderr: &str) -> String {
-        let combined = format!("{}\n{}", stdout, stderr);
-
-        // Extract test counts from cargo test output
+    fn build_summary(exit_code: i64, combined: &str) -> String {
+        // Parse cargo test result line: "test result: FAILED. 6 passed; 5 failed; ..."
         let mut passed = 0u32;
         let mut failed = 0u32;
 
         for line in combined.lines() {
-            if line.contains("test result:") {
-                // e.g. "test result: FAILED. 3 passed; 2 failed;"
-                if let Some(p) = Self::extract_count(line, "passed") { passed += p; }
-                if let Some(f) = Self::extract_count(line, "failed") { failed += f; }
+            // Strip ANSI escape codes before matching
+            let clean: String = line.chars().filter(|c| c.is_ascii() && (*c as u8) >= 32).collect();
+            if clean.contains("test result:") {
+                if let Some(p) = Self::extract_count(&clean, " passed") { passed += p; }
+                if let Some(f) = Self::extract_count(&clean, " failed") { failed += f; }
             }
         }
 

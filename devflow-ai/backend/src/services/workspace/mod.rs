@@ -59,6 +59,12 @@ impl WorkspaceService {
         Ok(content)
     }
 
+    /// Synchronous version for use in non-async map/closure contexts.
+    pub fn read_artifact_sync(config: &Config, workspace_id: &str, relative: &str) -> Option<String> {
+        let path = Self::validate_path(config, workspace_id, relative).ok()?;
+        std::fs::read_to_string(&path).ok()
+    }
+
     pub async fn write_artifact(config: &Config, workspace_id: &str, relative: &str, content: &str) -> ApiResult<()> {
         let path = Self::validate_path(config, workspace_id, relative)?;
         if let Some(parent) = path.parent() {

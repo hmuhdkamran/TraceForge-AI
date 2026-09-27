@@ -36,7 +36,7 @@ describe('UploadLab API client — field name contract', () => {
   it('should append files with field name "files" to FormData', async () => {
     const capturedFormData: FormData[] = [];
 
-    mockedAxios.post = vi.fn().mockImplementation((url: string, formData: FormData) => {
+    mockedAxios.post = vi.fn().mockImplementation((_url: string, formData: FormData) => {
       capturedFormData.push(formData);
       return Promise.resolve({ data: { uploaded: [], count: 0 } });
     });

@@ -49,7 +49,7 @@ impl VerificationService {
             execution_type,
             CMD_RUST_BACKEND_TESTS,
             "cargo",
-            &["test", "--", "--test-output=immediate"],
+            &["test", "--", "--nocapture"],
             &broken_backend,
         ).await
     }

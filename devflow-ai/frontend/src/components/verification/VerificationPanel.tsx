@@ -94,13 +94,14 @@ function ExecutionCard({ title, execution, type }: { title: string; execution: a
     );
   }
 
-  const statusIcon = {
+  const statusIconMap: Record<string, React.ReactNode> = {
     passed: <CheckCircle size={16} className="text-emerald-500" />,
     failed: <XCircle size={16} className="text-red-500" />,
     running: <Clock size={16} className="text-blue-500 animate-spin" />,
     timeout: <XCircle size={16} className="text-amber-500" />,
     error: <XCircle size={16} className="text-red-500" />,
-  }[execution.status] || <Clock size={16} className="text-gray-400" />;
+  };
+  const statusIcon = statusIconMap[execution.status] || <Clock size={16} className="text-gray-400" />;
 
   return (
     <div className={`border rounded-lg p-4 ${

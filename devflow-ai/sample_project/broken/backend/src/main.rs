@@ -102,7 +102,7 @@ async fn main() {
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::http::{Request, StatusCode, header};
+    use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
 
     // Helper: build a multipart body with correct field name "files"
@@ -125,6 +125,7 @@ mod tests {
     }
 
     // Helper: build multipart with WRONG field name (as the broken frontend does)
+    #[allow(dead_code)]
     fn build_multipart_wrong_field(files: &[(&str, &[u8])]) -> (String, Vec<u8>) {
         let boundary = "----TestBoundary12345";
         let mut body = Vec::new();
